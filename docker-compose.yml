@@ -1,0 +1,15 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finpa-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/credentials.json:/app/credentials.json:ro
+    environment:
+      - ENV=development
+      - GOOGLE_SHEETS_ID=1DUK_nOirbRGIoWIhnOgYyAs99KdQvwrYCNTzURqR0uc
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials.json
