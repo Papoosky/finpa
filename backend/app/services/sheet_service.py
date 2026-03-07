@@ -3,7 +3,7 @@ import uuid
 import gspread
 from app.models.transaction import TransactionCreate
 
-HEADERS = ["ID", "Fecha", "Monto", "Categoría", "Descripción"]
+HEADERS = ["ID", "Tipo", "Fecha", "Monto", "Categoría", "Descripción"]
 
 
 class SheetService:
@@ -30,6 +30,7 @@ class SheetService:
         row_id = str(uuid.uuid4())
         row = [
             row_id,
+            transaction.type.value,
             transaction.date.isoformat(),
             transaction.amount,
             transaction.category,
@@ -39,6 +40,7 @@ class SheetService:
 
         return {
             "id": row_id,
+            "type": transaction.type,
             "amount": transaction.amount,
             "date": transaction.date,
             "category": transaction.category,

@@ -13,3 +13,19 @@ services:
       - ENV=development
       - GOOGLE_SHEETS_ID=1DUK_nOirbRGIoWIhnOgYyAs99KdQvwrYCNTzURqR0uc
       - GOOGLE_CREDENTIALS_PATH=/app/credentials.json
+
+  mobile:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+    container_name: finpa-mobile
+    ports:
+      - "8081:8081"
+      - "19000:19000"
+      - "19001:19001"
+    environment:
+      # IP LAN del servidor — el iPhone la necesita para conectarse
+      - REACT_NATIVE_PACKAGER_HOSTNAME=${SERVER_IP}
+      - EXPO_PUBLIC_API_URL=http://${SERVER_IP}:8000
+    stdin_open: true
+    tty: true
