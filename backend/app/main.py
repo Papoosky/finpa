@@ -1,16 +1,31 @@
-from fastapi import FastAPI
-from app.models.transaction import TransactionCreate, TransactionResponse
-from app.services.sheet_service import SheetService
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Finpa API", description="API para registrar transacciones hacia Google Sheets")
-sheet_service = SheetService()
+from fastapi import FastAPI
+
+from app.database import engine, Base
+from app.routers import auth, transactions
+from app.services.sheet_service import init_sheet_service
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables (Alembic will handle migrations in production)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    init_sheet_service()
+    yield
+
+
+app = FastAPI(
+    title="Finpa API",
+    description="API para registrar y consultar transacciones personales",
+    lifespan=lifespan,
+)
+
+app.include_router(auth.router)
+app.include_router(transactions.router)
+
 
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Finpa API is running"}
-
-@app.post("/transactions/", response_model=TransactionResponse, status_code=201)
-def create_transaction(transaction: TransactionCreate):
-    # En el futuro esto llamara la sheet real, por ahora esta mockeado
-    result = sheet_service.add_transaction(transaction)
-    return result

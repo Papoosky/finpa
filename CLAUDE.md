@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-**Finpa** is a personal finance tracker. It has two components:
-- `backend/` — FastAPI app that writes transactions to a Google Sheet
+**Finpa** is a personal finance tracker with multi-user support. It has two components:
+- `backend/` — FastAPI app with PostgreSQL (primary) and optional Google Sheets sync
 - `mobile/` — Expo (React Native) app with a transaction form, runs on iPhone via Expo Go
 
 Both are containerized and run together via Docker Compose. The intended deployment target is a Proxmox home server (LXC or VM).
@@ -16,6 +16,7 @@ Both are containerized and run together via Docker Compose. The intended deploym
 ```bash
 # Requires a .env file at the repo root:
 echo "SERVER_IP=<your-lan-ip>" > .env
+echo "SECRET_KEY=$(openssl rand -hex 32)" >> .env
 
 docker compose up --build
 ```
@@ -26,7 +27,9 @@ docker compose up --build
 ### Backend only (local dev)
 ```bash
 cd backend
+# Start a local postgres (or use Docker: docker compose up db)
 uv sync
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -40,9 +43,15 @@ EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
 ## Architecture
 
 ### Backend
-- Entry point: `app/main.py` — single POST `/transactions/` endpoint
-- `app/models/transaction.py` — Pydantic models. `TransactionType` enum: `income` | `expense`
-- `app/services/sheet_service.py` — writes rows to the Google Sheet on init and per request
+- Entry point: `app/main.py` — FastAPI app with lifespan, includes auth + transactions routers
+- `app/database.py` — async SQLAlchemy engine, session factory, Base class
+- `app/auth.py` — JWT auth (python-jose + passlib/bcrypt), `get_current_user` dependency
+- `app/models/` — SQLAlchemy models: `User`, `Transaction`. Both use `id` (autoincrement int, internal) + `uuid` (UUID, exposed in API)
+- `app/schemas/` — Pydantic schemas for request/response validation
+- `app/routers/auth.py` — `POST /auth/register`, `POST /auth/login`
+- `app/routers/transactions.py` — full CRUD: `POST`, `GET` (list with filters), `GET /{uuid}`, `PATCH /{uuid}`, `DELETE /{uuid}`
+- `app/services/sheet_service.py` — optional Google Sheets sync (only for users with `sync_to_sheets=true`)
+- `alembic/` — database migrations. Run `uv run alembic upgrade head` to apply
 - Package manager: `uv` (pyproject.toml + uv.lock). Python 3.12+
 - The Dockerfile uses `ghcr.io/astral-sh/uv:trixie` as base image
 
@@ -53,15 +62,33 @@ EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
 - Expo SDK 54, `--legacy-peer-deps` required for npm install
 
 ### Docker Compose
-- `SERVER_IP` in `.env` is injected into the mobile container as both `REACT_NATIVE_PACKAGER_HOSTNAME` (so the QR code points to the right IP) and `EXPO_PUBLIC_API_URL` (so API calls reach the backend)
+- `db` service: PostgreSQL 16 with persistent volume (`pgdata`)
+- `backend` depends on `db` with healthcheck (`pg_isready`), runs alembic migrations on startup
+- `SERVER_IP` in `.env` is injected into the mobile container for QR code and API URL
+- `SECRET_KEY` in `.env` is used for JWT signing
+- `GOOGLE_SHEETS_ID` is optional — if unset, sheet sync is disabled
 
-## Google Sheets setup
+## Google Sheets setup (optional)
 - Credentials file: `backend/credentials.json` (service account key, gitignored)
-- Sheet ID: set via `GOOGLE_SHEETS_ID` env var in `docker-compose.yml`
+- Sheet ID: set via `GOOGLE_SHEETS_ID` env var in `.env`
 - The sheet must have a worksheet named `transacciones`
-- Headers are auto-created if the sheet is empty: `ID | Tipo | Fecha | Monto | Categoría | Descripción`
+- Headers are auto-created if the sheet is empty
+- Only syncs for users with `sync_to_sheets=true` in their profile
+
+## Auth
+- JWT-based authentication with bcrypt password hashing
+- Register: `POST /auth/register` with `{email, password, name}`
+- Login: `POST /auth/login` with `{email, password}` → returns `{access_token, token_type}`
+- All `/transactions/` endpoints require `Authorization: Bearer <token>` header
+- Transactions are scoped to the authenticated user (full isolation)
+
+## Key conventions
+- All DB models use `id` (integer PK, internal) and `uuid` (exposed to API/clients). Joins and FKs use `id`; API responses and URL params use `uuid`
+- JWT tokens encode the user's `uuid` in the `sub` claim
+- `passlib 1.7.4` + `bcrypt 4.x` produces a harmless log warning about `bcrypt.__about__` — this is cosmetic and can be ignored
 
 ## Key constraints
-- No database yet — Google Sheets is the only persistence layer (PostgreSQL planned for the future)
+- PostgreSQL is the primary persistence layer, Google Sheets is an optional sync target
 - iOS only (no Android testing)
 - `newArchEnabled: false` in `app.json` — required to avoid TurboModule errors in Expo Go
+- `bcrypt` must be pinned to `<5.0.0` due to passlib 1.7.4 incompatibility

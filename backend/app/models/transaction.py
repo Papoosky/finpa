@@ -1,26 +1,20 @@
+import uuid as _uuid
 import datetime
-from enum import Enum
-from pydantic import BaseModel, Field
-from typing import Optional
+from sqlalchemy import Integer, String, Float, Date, ForeignKey, Uuid
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.database import Base
 
 
-class TransactionType(str, Enum):
-    income = "income"
-    expense = "expense"
+class Transaction(Base):
+    __tablename__ = "transactions"
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[_uuid.UUID] = mapped_column(Uuid, unique=True, index=True, default=_uuid.uuid4)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    type: Mapped[str] = mapped_column(String(10))
+    amount: Mapped[float] = mapped_column(Float)
+    date: Mapped[datetime.date] = mapped_column(Date)
+    category: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-class TransactionCreate(BaseModel):
-    type: TransactionType = Field(..., description="Tipo de transacción: income o expense")
-    amount: float = Field(..., description="Valor monetario de la transacción")
-    date: datetime.date = Field(..., description="Fecha de la transacción")
-    category: str = Field(..., description="Categoría (ej. Comida, Transporte, Cuentas)")
-    description: Optional[str] = Field(default=None, description="Nota adicional de la transacción")
-
-
-class TransactionResponse(BaseModel):
-    id: str
-    type: TransactionType
-    amount: float
-    date: datetime.date
-    category: str
-    status: str
+    user: Mapped["User"] = relationship(back_populates="transactions")
