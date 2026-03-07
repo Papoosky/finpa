@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import {
   Alert,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,7 +15,6 @@ import {
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import { StatusBar } from "expo-status-bar";
 import { API_BASE_URL } from "./config";
 
@@ -47,12 +48,19 @@ function formatDate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+function formatCLP(value: string): string {
+  const num = parseInt(value.replace(/\D/g, ""), 10);
+  if (isNaN(num)) return "";
+  return num.toLocaleString("es-CL");
+}
+
 export default function App() {
   const [type, setType] = useState<TransactionType>("expense");
-  const [amount, setAmount] = useState("");
+  const [rawAmount, setRawAmount] = useState("");
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -65,13 +73,20 @@ export default function App() {
     setCategory(cats[0]);
   }
 
+  function handleAmountChange(text: string) {
+    // Solo dígitos
+    const digits = text.replace(/\D/g, "");
+    setRawAmount(digits);
+  }
+
   function handleDateChange(_: DateTimePickerEvent, selected?: Date) {
     setShowDatePicker(Platform.OS === "ios");
     if (selected) setDate(selected);
   }
 
   async function handleSubmit() {
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+    const amount = parseInt(rawAmount, 10);
+    if (!rawAmount || isNaN(amount) || amount <= 0) {
       Alert.alert("Error", "Ingresa un monto válido mayor a 0.");
       return;
     }
@@ -83,7 +98,7 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type,
-          amount: parseFloat(amount),
+          amount,
           date: formatDate(date),
           category,
           description: description.trim() || null,
@@ -102,7 +117,7 @@ export default function App() {
           {
             text: "OK",
             onPress: () => {
-              setAmount("");
+              setRawAmount("");
               setDescription("");
               setDate(new Date());
             },
@@ -140,9 +155,7 @@ export default function App() {
             ]}
             onPress={() => handleTypeChange("income")}
           >
-            <Text
-              style={[styles.toggleText, isIncome && styles.toggleTextActive]}
-            >
+            <Text style={[styles.toggleText, isIncome && styles.toggleTextActive]}>
               Ingreso
             </Text>
           </TouchableOpacity>
@@ -153,35 +166,33 @@ export default function App() {
             ]}
             onPress={() => handleTypeChange("expense")}
           >
-            <Text
-              style={[styles.toggleText, !isIncome && styles.toggleTextActive]}
-            >
+            <Text style={[styles.toggleText, !isIncome && styles.toggleTextActive]}>
               Gasto
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Monto */}
-        <Text style={styles.label}>Monto</Text>
+        <Text style={styles.label}>Monto (CLP)</Text>
         <View style={styles.amountRow}>
           <Text style={[styles.currencySymbol, { color: accentColor }]}>$</Text>
           <TextInput
             style={[styles.amountInput, { borderColor: accentColor }]}
-            placeholder="0.00"
+            placeholder="0"
             placeholderTextColor="#9ca3af"
-            keyboardType="decimal-pad"
-            value={amount}
-            onChangeText={setAmount}
+            keyboardType="number-pad"
+            value={rawAmount ? formatCLP(rawAmount) : ""}
+            onChangeText={handleAmountChange}
           />
         </View>
 
         {/* Fecha */}
         <Text style={styles.label}>Fecha</Text>
         <TouchableOpacity
-          style={styles.dateButton}
+          style={styles.fieldButton}
           onPress={() => setShowDatePicker(true)}
         >
-          <Text style={styles.dateText}>{formatDate(date)}</Text>
+          <Text style={styles.fieldButtonText}>{formatDate(date)}</Text>
         </TouchableOpacity>
         {showDatePicker && (
           <DateTimePicker
@@ -195,17 +206,13 @@ export default function App() {
 
         {/* Categoría */}
         <Text style={styles.label}>Categoría</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={category}
-            onValueChange={(v) => setCategory(v)}
-            style={styles.picker}
-          >
-            {categories.map((c) => (
-              <Picker.Item key={c} label={c} value={c} />
-            ))}
-          </Picker>
-        </View>
+        <TouchableOpacity
+          style={styles.fieldButton}
+          onPress={() => setShowCategoryModal(true)}
+        >
+          <Text style={styles.fieldButtonText}>{category}</Text>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
 
         {/* Descripción */}
         <Text style={styles.label}>Descripción (opcional)</Text>
@@ -222,7 +229,11 @@ export default function App() {
 
         {/* Botón guardar */}
         <TouchableOpacity
-          style={[styles.submitBtn, { backgroundColor: accentColor }, loading && styles.submitBtnDisabled]}
+          style={[
+            styles.submitBtn,
+            { backgroundColor: accentColor },
+            loading && styles.submitBtnDisabled,
+          ]}
           onPress={handleSubmit}
           disabled={loading}
         >
@@ -231,6 +242,56 @@ export default function App() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal categoría */}
+      <Modal
+        visible={showCategoryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCategoryModal(false)}
+        />
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Categoría</Text>
+            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <Text style={styles.modalClose}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={categories}
+            keyExtractor={(item) => item}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  item === category && { backgroundColor: "#f0fdf4" },
+                ]}
+                onPress={() => {
+                  setCategory(item);
+                  setShowCategoryModal(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.modalOptionText,
+                    item === category && { color: accentColor, fontWeight: "700" },
+                  ]}
+                >
+                  {item}
+                </Text>
+                {item === category && (
+                  <Text style={[styles.checkmark, { color: accentColor }]}>✓</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -299,31 +360,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     paddingBottom: 4,
   },
-  dateButton: {
+  fieldButton: {
     backgroundColor: "#ffffff",
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#e5e7eb",
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  dateText: {
+  fieldButtonText: {
     fontSize: 16,
     color: "#374151",
     fontWeight: "500",
   },
-  pickerWrapper: {
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    marginBottom: 20,
-    overflow: "hidden",
-  },
-  picker: {
-    height: 50,
-    color: "#374151",
+  chevron: {
+    fontSize: 22,
+    color: "#9ca3af",
+    lineHeight: 24,
   },
   descriptionInput: {
     backgroundColor: "#ffffff",
@@ -349,5 +406,50 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 17,
     fontWeight: "700",
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  modalSheet: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "55%",
+    paddingBottom: 34,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  modalClose: {
+    fontSize: 15,
+    color: "#6b7280",
+  },
+  modalOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f9fafb",
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: "#374151",
+  },
+  checkmark: {
+    fontSize: 18,
   },
 });
