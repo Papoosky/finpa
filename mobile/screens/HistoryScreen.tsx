@@ -13,6 +13,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { API_BASE_URL } from "../config";
 import { CATEGORY_EMOJI_MAP } from "../constants/categories";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import MonthYearPicker from "../components/MonthYearPicker";
 
 type Transaction = {
   uuid: string;
@@ -176,15 +177,11 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const year = month.getFullYear();
-  const monthNum = month.getMonth();
-  const dateFrom = `${year}-${String(monthNum + 1).padStart(2, "0")}-01`;
-  const lastDay = new Date(year, monthNum + 1, 0).getDate();
-  const dateTo = `${year}-${String(monthNum + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-  const monthLabel = month.toLocaleDateString("es-CL", {
-    month: "long",
-    year: "numeric",
-  });
+  const selectedYear = month.getFullYear();
+  const selectedMonth = month.getMonth();
+  const dateFrom = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const dateTo = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
   useFocusEffect(
     useCallback(() => {
@@ -210,10 +207,6 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
     } finally {
       setLoading(false);
     }
-  }
-
-  function changeMonth(delta: number) {
-    setMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   }
 
   function handleEdit(transaction: Transaction) {
@@ -277,14 +270,14 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
   return (
     <View style={styles.container}>
       {/* Month selector */}
-      <View style={styles.monthRow}>
-        <TouchableOpacity onPress={() => changeMonth(-1)}>
-          <Text style={styles.monthArrow}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.monthLabel}>{monthLabel}</Text>
-        <TouchableOpacity onPress={() => changeMonth(1)}>
-          <Text style={styles.monthArrow}>›</Text>
-        </TouchableOpacity>
+      <View style={styles.pickerRow}>
+        <MonthYearPicker
+          mode="month"
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onChangeMonth={(m) => setMonth(new Date(selectedYear, m, 1))}
+          onChangeYear={(y) => setMonth(new Date(y, selectedMonth, 1))}
+        />
       </View>
 
       {transactions.length === 0 ? (
@@ -395,23 +388,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  monthRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  pickerRow: {
     alignItems: "center",
-    paddingHorizontal: 20,
     paddingVertical: 16,
-  },
-  monthArrow: {
-    fontSize: 28,
-    color: "#6b7280",
-    paddingHorizontal: 12,
-  },
-  monthLabel: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
-    textTransform: "capitalize",
   },
   list: {
     paddingHorizontal: 16,

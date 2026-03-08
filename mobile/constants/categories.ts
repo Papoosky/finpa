@@ -21,6 +21,7 @@ export const EXPENSE_CATEGORIES: Category[] = [
   { label: "Ropa", emoji: "👕" },
   { label: "Educacion", emoji: "📚" },
   { label: "Suscripciones", emoji: "📱" },
+  { label: "Mascota", emoji: "🐾" },
   { label: "Otro", emoji: "📌" },
 ];
 

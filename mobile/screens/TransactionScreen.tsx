@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -72,6 +72,7 @@ export default function TransactionScreen({ token, onUnauthorized }: Props) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [description, setDescription] = useState(editTransaction?.description ?? "");
   const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (editTransaction) {
@@ -182,6 +183,7 @@ export default function TransactionScreen({ token, onUnauthorized }: Props) {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
@@ -266,6 +268,9 @@ export default function TransactionScreen({ token, onUnauthorized }: Props) {
           multiline
           numberOfLines={3}
           textAlignVertical="top"
+          onFocus={() => {
+            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+          }}
         />
 
         {/* Boton guardar */}
