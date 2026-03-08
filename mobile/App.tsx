@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
@@ -16,7 +17,11 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { StatusBar } from "expo-status-bar";
+import * as SecureStore from "expo-secure-store";
 import { API_BASE_URL } from "./config";
+import AuthScreen from "./AuthScreen";
+
+const TOKEN_KEY = "finpa_token";
 
 type TransactionType = "income" | "expense";
 
@@ -36,7 +41,7 @@ const EXPENSE_CATEGORIES = [
   "Salud",
   "Entretenimiento",
   "Ropa",
-  "Educación",
+  "Educacion",
   "Suscripciones",
   "Otro",
 ];
@@ -55,6 +60,9 @@ function formatCLP(value: string): string {
 }
 
 export default function App() {
+  const [token, setToken] = useState<string | null>(null);
+  const [checkingToken, setCheckingToken] = useState(true);
+
   const [type, setType] = useState<TransactionType>("expense");
   const [rawAmount, setRawAmount] = useState("");
   const [date, setDate] = useState(new Date());
@@ -67,6 +75,23 @@ export default function App() {
   const categories =
     type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
+  useEffect(() => {
+    SecureStore.getItemAsync(TOKEN_KEY).then((stored) => {
+      if (stored) setToken(stored);
+      setCheckingToken(false);
+    });
+  }, []);
+
+  async function handleAuth(newToken: string) {
+    await SecureStore.setItemAsync(TOKEN_KEY, newToken);
+    setToken(newToken);
+  }
+
+  async function handleLogout() {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    setToken(null);
+  }
+
   function handleTypeChange(newType: TransactionType) {
     setType(newType);
     const cats = newType === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -74,7 +99,6 @@ export default function App() {
   }
 
   function handleAmountChange(text: string) {
-    // Solo dígitos
     const digits = text.replace(/\D/g, "");
     setRawAmount(digits);
   }
@@ -87,7 +111,7 @@ export default function App() {
   async function handleSubmit() {
     const amount = parseInt(rawAmount, 10);
     if (!rawAmount || isNaN(amount) || amount <= 0) {
-      Alert.alert("Error", "Ingresa un monto válido mayor a 0.");
+      Alert.alert("Error", "Ingresa un monto valido mayor a 0.");
       return;
     }
 
@@ -95,7 +119,10 @@ export default function App() {
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           type,
           amount,
@@ -104,6 +131,12 @@ export default function App() {
           description: description.trim() || null,
         }),
       });
+
+      if (response.status === 401) {
+        Alert.alert("Sesion expirada", "Inicia sesion nuevamente.");
+        handleLogout();
+        return;
+      }
 
       if (!response.ok) {
         const err = await response.json();
@@ -125,10 +158,22 @@ export default function App() {
         ]
       );
     } catch (e: any) {
-      Alert.alert("Error", `No se pudo guardar la transacción.\n${e.message}`);
+      Alert.alert("Error", `No se pudo guardar la transaccion.\n${e.message}`);
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingToken) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </View>
+    );
+  }
+
+  if (!token) {
+    return <AuthScreen onAuth={handleAuth} />;
   }
 
   const isIncome = type === "income";
@@ -144,7 +189,12 @@ export default function App() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Nueva transacción</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Nueva transaccion</Text>
+          <TouchableOpacity onPress={handleLogout}>
+            <Text style={styles.logoutText}>Salir</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Toggle ingreso / gasto */}
         <View style={styles.toggleRow}>
@@ -204,8 +254,8 @@ export default function App() {
           />
         )}
 
-        {/* Categoría */}
-        <Text style={styles.label}>Categoría</Text>
+        {/* Categoria */}
+        <Text style={styles.label}>Categoria</Text>
         <TouchableOpacity
           style={styles.fieldButton}
           onPress={() => setShowCategoryModal(true)}
@@ -214,8 +264,8 @@ export default function App() {
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
 
-        {/* Descripción */}
-        <Text style={styles.label}>Descripción (opcional)</Text>
+        {/* Descripcion */}
+        <Text style={styles.label}>Descripcion (opcional)</Text>
         <TextInput
           style={styles.descriptionInput}
           placeholder="Agrega una nota..."
@@ -227,7 +277,7 @@ export default function App() {
           textAlignVertical="top"
         />
 
-        {/* Botón guardar */}
+        {/* Boton guardar */}
         <TouchableOpacity
           style={[
             styles.submitBtn,
@@ -243,7 +293,7 @@ export default function App() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal categoría */}
+      {/* Modal categoria */}
       <Modal
         visible={showCategoryModal}
         transparent
@@ -257,7 +307,7 @@ export default function App() {
         />
         <View style={styles.modalSheet}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Categoría</Text>
+            <Text style={styles.modalTitle}>Categoria</Text>
             <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
               <Text style={styles.modalClose}>Cerrar</Text>
             </TouchableOpacity>
@@ -306,11 +356,20 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 40,
   },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 28,
+  },
   title: {
     fontSize: 26,
     fontWeight: "700",
     color: "#111827",
-    marginBottom: 28,
+  },
+  logoutText: {
+    fontSize: 15,
+    color: "#6b7280",
   },
   toggleRow: {
     flexDirection: "row",
@@ -407,7 +466,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
   },
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
