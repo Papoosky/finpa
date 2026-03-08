@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -201,7 +201,7 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
         return;
       }
       const data = await res.json();
-      setTransactions(data);
+      setTransactions(data.items ?? data);
     } catch {
       setTransactions([]);
     } finally {
@@ -209,13 +209,13 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
     }
   }
 
-  function handleEdit(transaction: Transaction) {
+  const handleEdit = useCallback((transaction: Transaction) => {
     navigation.navigate("Transaction", { transaction });
-  }
+  }, [navigation]);
 
-  function handleDeleteRequest(transaction: Transaction) {
+  const handleDeleteRequest = useCallback((transaction: Transaction) => {
     setDeleteTarget(transaction);
-  }
+  }, []);
 
   async function handleDeleteConfirm() {
     if (!deleteTarget) return;
@@ -245,19 +245,22 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
   }
 
   // Group transactions by date
-  const sections: Section[] = [];
-  const dateMap = new Map<string, Transaction[]>();
-  for (const t of transactions) {
-    const existing = dateMap.get(t.date);
-    if (existing) {
-      existing.push(t);
-    } else {
-      dateMap.set(t.date, [t]);
+  const sections = useMemo(() => {
+    const result: Section[] = [];
+    const dateMap = new Map<string, Transaction[]>();
+    for (const t of transactions) {
+      const existing = dateMap.get(t.date);
+      if (existing) {
+        existing.push(t);
+      } else {
+        dateMap.set(t.date, [t]);
+      }
     }
-  }
-  for (const [date, data] of dateMap) {
-    sections.push({ title: formatSectionDate(date), data });
-  }
+    for (const [date, data] of dateMap) {
+      result.push({ title: formatSectionDate(date), data });
+    }
+    return result;
+  }, [transactions]);
 
   if (loading) {
     return (

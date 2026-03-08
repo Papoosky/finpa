@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -12,6 +12,8 @@ const MONTH_NAMES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
+
+const MONTH_DATA = MONTH_NAMES.map((name, i) => ({ name, index: i }));
 
 type Props = {
   mode: "month" | "year";
@@ -36,10 +38,13 @@ export default function MonthYearPicker({
   const currentMonth = now.getMonth();
   const minYear = currentYear - 3;
 
-  const years: number[] = [];
-  for (let y = currentYear; y >= minYear; y--) {
-    years.push(y);
-  }
+  const years = useMemo(() => {
+    const result: number[] = [];
+    for (let y = currentYear; y >= minYear; y--) {
+      result.push(y);
+    }
+    return result;
+  }, [currentYear, minYear]);
 
   const label =
     mode === "month"
@@ -120,7 +125,7 @@ export default function MonthYearPicker({
               </View>
 
               <FlatList
-                data={MONTH_NAMES.map((name, i) => ({ name, index: i }))}
+                data={MONTH_DATA}
                 keyExtractor={(item) => String(item.index)}
                 renderItem={({ item }) => {
                   const disabled = isMonthDisabled(item.index, modalYear);

@@ -1,5 +1,5 @@
 import "react-native-gesture-handler";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -24,6 +24,23 @@ import HistoryScreen from "./screens/HistoryScreen";
 const TOKEN_KEY = "finpa_token";
 const Drawer = createDrawerNavigator();
 
+function CustomDrawerContent({
+  onLogout,
+  ...props
+}: DrawerContentComponentProps & { onLogout: () => void }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <DrawerContentScrollView {...props}>
+        <Text style={styles.drawerTitle}>Finpa</Text>
+        <DrawerItemList {...props} />
+      </DrawerContentScrollView>
+      <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
+        <Text style={styles.logoutText}>Cerrar sesion</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [checkingToken, setCheckingToken] = useState(true);
@@ -40,10 +57,10 @@ export default function App() {
     setToken(newToken);
   }
 
-  async function handleLogout() {
+  const handleLogout = useCallback(async () => {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     setToken(null);
-  }
+  }, []);
 
   if (checkingToken) {
     return (
@@ -62,26 +79,12 @@ export default function App() {
     );
   }
 
-  function CustomDrawerContent(props: DrawerContentComponentProps) {
-    return (
-      <View style={{ flex: 1 }}>
-        <DrawerContentScrollView {...props}>
-          <Text style={styles.drawerTitle}>Finpa</Text>
-          <DrawerItemList {...props} />
-        </DrawerContentScrollView>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Cerrar sesion</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <>
       <StatusBar style="dark" />
       <NavigationContainer>
         <Drawer.Navigator
-          drawerContent={(props) => <CustomDrawerContent {...props} />}
+          drawerContent={(props) => <CustomDrawerContent {...props} onLogout={handleLogout} />}
           screenOptions={{
             headerStyle: { backgroundColor: "#f9fafb", elevation: 0, shadowOpacity: 0 },
             headerTintColor: "#111827",

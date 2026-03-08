@@ -15,6 +15,7 @@ export const INCOME_CATEGORIES: Category[] = [
 export const EXPENSE_CATEGORIES: Category[] = [
   { label: "Comida", emoji: "🍔" },
   { label: "Transporte", emoji: "🚗" },
+  { label: "Inversiones", emoji: "📈" },
   { label: "Cuentas", emoji: "📄" },
   { label: "Salud", emoji: "🏥" },
   { label: "Entretenimiento", emoji: "🎬" },

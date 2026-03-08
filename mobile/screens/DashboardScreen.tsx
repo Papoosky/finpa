@@ -90,7 +90,7 @@ export default function DashboardScreen({ token, onUnauthorized }: Props) {
         return;
       }
       const data = await res.json();
-      setTransactions(data);
+      setTransactions(data.items ?? data);
     } catch {
       setTransactions([]);
     } finally {
@@ -99,11 +99,19 @@ export default function DashboardScreen({ token, onUnauthorized }: Props) {
   }
 
   // Basic totals
-  const expenses = transactions.filter((t) => t.type === "expense");
-  const incomes = transactions.filter((t) => t.type === "income");
-  const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
-  const totalIncome = incomes.reduce((s, t) => s + t.amount, 0);
-  const balance = totalIncome - totalExpense;
+  const { expenses, incomes, totalExpense, totalIncome, balance } = useMemo(() => {
+    const exp = transactions.filter((t) => t.type === "expense");
+    const inc = transactions.filter((t) => t.type === "income");
+    const totExp = exp.reduce((s, t) => s + t.amount, 0);
+    const totInc = inc.reduce((s, t) => s + t.amount, 0);
+    return {
+      expenses: exp,
+      incomes: inc,
+      totalExpense: totExp,
+      totalIncome: totInc,
+      balance: totInc - totExp,
+    };
+  }, [transactions]);
 
   // Category breakdown for monthly bar chart
   const categoryTotals: CategoryTotal[] = useMemo(() => {

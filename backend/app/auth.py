@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -18,6 +19,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+# Simple in-memory user cache: {user_uuid: (User, timestamp)}
+_user_cache: dict[UUID, tuple[User, float]] = {}
+_USER_CACHE_TTL = 300  # 5 minutes
+
+
+def _invalidate_user_cache(user_uuid: UUID) -> None:
+    _user_cache.pop(user_uuid, None)
 
 
 def hash_password(password: str) -> str:
@@ -52,8 +61,21 @@ async def get_current_user(
     except (JWTError, ValueError):
         raise credentials_exception
 
+    # Check cache first
+    cached = _user_cache.get(user_uuid)
+    if cached is not None:
+        user, ts = cached
+        if time.monotonic() - ts < _USER_CACHE_TTL:
+            # Merge cached user into current session so lazy loads work
+            user = await db.merge(user)
+            return user
+        else:
+            del _user_cache[user_uuid]
+
     result = await db.execute(select(User).where(User.uuid == user_uuid))
     user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exception
+
+    _user_cache[user_uuid] = (user, time.monotonic())
     return user

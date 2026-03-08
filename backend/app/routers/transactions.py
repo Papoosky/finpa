@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.schemas.transaction import (
+    PaginatedTransactions,
     TransactionCreate,
     TransactionResponse,
     TransactionUpdate,
@@ -46,28 +47,41 @@ async def create_transaction(
     return txn
 
 
-@router.get("/", response_model=list[TransactionResponse])
+@router.get("/", response_model=PaginatedTransactions)
 async def list_transactions(
     type: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     date_from: Optional[datetime.date] = Query(None),
     date_to: Optional[datetime.date] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Transaction).where(Transaction.user_id == user.id)
+    base = select(Transaction).where(Transaction.user_id == user.id)
     if type:
-        stmt = stmt.where(Transaction.type == type)
+        base = base.where(Transaction.type == type)
     if category:
-        stmt = stmt.where(Transaction.category == category)
+        base = base.where(Transaction.category == category)
     if date_from:
-        stmt = stmt.where(Transaction.date >= date_from)
+        base = base.where(Transaction.date >= date_from)
     if date_to:
-        stmt = stmt.where(Transaction.date <= date_to)
-    stmt = stmt.order_by(Transaction.date.desc())
+        base = base.where(Transaction.date <= date_to)
 
+    # Count total matching rows
+    count_stmt = select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_stmt)).scalar_one()
+
+    # Fetch paginated results
+    stmt = base.order_by(Transaction.date.desc()).limit(limit).offset(offset)
     result = await db.execute(stmt)
-    return result.scalars().all()
+
+    return PaginatedTransactions(
+        items=result.scalars().all(),
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{transaction_uuid}", response_model=TransactionResponse)

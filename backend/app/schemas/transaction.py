@@ -35,3 +35,10 @@ class TransactionResponse(BaseModel):
     description: Optional[str]
 
     model_config = {"from_attributes": True}
+
+
+class PaginatedTransactions(BaseModel):
+    items: list[TransactionResponse]
+    total: int
+    limit: int
+    offset: int

@@ -28,7 +28,7 @@ function formatAmount(n: number): string {
   return "$" + n.toLocaleString("es-CL");
 }
 
-export default function ConfirmDeleteModal({
+function ConfirmDeleteModal({
   visible,
   transaction,
   loading,
@@ -88,6 +88,8 @@ export default function ConfirmDeleteModal({
     </Modal>
   );
 }
+
+export default React.memo(ConfirmDeleteModal);
 
 const styles = StyleSheet.create({
   overlay: {
