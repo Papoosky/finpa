@@ -19,6 +19,7 @@ import * as SecureStore from "expo-secure-store";
 import AuthScreen from "./AuthScreen";
 import DashboardScreen from "./screens/DashboardScreen";
 import TransactionScreen from "./screens/TransactionScreen";
+import HistoryScreen from "./screens/HistoryScreen";
 
 const TOKEN_KEY = "finpa_token";
 const Drawer = createDrawerNavigator();
@@ -100,6 +101,12 @@ export default function App() {
             options={{ drawerLabel: "💸 Nueva transaccion", title: "Nueva transaccion" }}
           >
             {() => <TransactionScreen token={token!} onUnauthorized={handleLogout} />}
+          </Drawer.Screen>
+          <Drawer.Screen
+            name="History"
+            options={{ drawerLabel: "📋 Historial", title: "Historial" }}
+          >
+            {() => <HistoryScreen token={token!} onUnauthorized={handleLogout} />}
           </Drawer.Screen>
         </Drawer.Navigator>
       </NavigationContainer>

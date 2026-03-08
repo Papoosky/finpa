@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { API_BASE_URL } from "../config";
+import { CATEGORY_EMOJI_MAP } from "../constants/categories";
 
 type Transaction = {
   uuid: string;
@@ -30,23 +31,6 @@ const CATEGORY_COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4",
   "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280",
 ];
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  Comida: "🍔",
-  Transporte: "🚗",
-  Cuentas: "📄",
-  Salud: "🏥",
-  Entretenimiento: "🎬",
-  Ropa: "👕",
-  Educacion: "📚",
-  Suscripciones: "📱",
-  Salario: "💰",
-  Freelance: "💻",
-  Inversiones: "📈",
-  Regalo: "🎁",
-  Reembolso: "🔄",
-  Otro: "📌",
-};
 
 type Props = {
   token: string;
@@ -171,7 +155,7 @@ export default function DashboardScreen({ token, onUnauthorized }: Props) {
             {categoryTotals.map((cat) => (
               <View key={cat.category} style={styles.barRow}>
                 <Text style={styles.barLabel}>
-                  {CATEGORY_EMOJI[cat.category] || "📌"} {cat.category}
+                  {CATEGORY_EMOJI_MAP[cat.category] || "📌"} {cat.category}
                 </Text>
                 <View style={styles.barTrack}>
                   <View

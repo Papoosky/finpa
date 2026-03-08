@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -15,30 +15,26 @@ import {
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { API_BASE_URL } from "../config";
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from "../constants/categories";
 
 type TransactionType = "income" | "expense";
 
-const INCOME_CATEGORIES = [
-  { label: "Salario", emoji: "💰" },
-  { label: "Freelance", emoji: "💻" },
-  { label: "Inversiones", emoji: "📈" },
-  { label: "Regalo", emoji: "🎁" },
-  { label: "Reembolso", emoji: "🔄" },
-  { label: "Otro", emoji: "📌" },
-];
+type TransactionData = {
+  uuid: string;
+  type: TransactionType;
+  amount: number;
+  date: string;
+  category: string;
+  description: string | null;
+};
 
-const EXPENSE_CATEGORIES = [
-  { label: "Comida", emoji: "🍔" },
-  { label: "Transporte", emoji: "🚗" },
-  { label: "Cuentas", emoji: "📄" },
-  { label: "Salud", emoji: "🏥" },
-  { label: "Entretenimiento", emoji: "🎬" },
-  { label: "Ropa", emoji: "👕" },
-  { label: "Educacion", emoji: "📚" },
-  { label: "Suscripciones", emoji: "📱" },
-  { label: "Otro", emoji: "📌" },
-];
+type RouteParams = {
+  Transaction: {
+    transaction?: TransactionData;
+  };
+};
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();
@@ -59,14 +55,33 @@ type Props = {
 };
 
 export default function TransactionScreen({ token, onUnauthorized }: Props) {
-  const [type, setType] = useState<TransactionType>("expense");
-  const [rawAmount, setRawAmount] = useState("");
-  const [date, setDate] = useState(new Date());
+  const navigation = useNavigation();
+  const route = useRoute<RouteProp<RouteParams, "Transaction">>();
+  const editTransaction = route.params?.transaction;
+  const isEditing = !!editTransaction;
+
+  const [type, setType] = useState<TransactionType>(editTransaction?.type ?? "expense");
+  const [rawAmount, setRawAmount] = useState(editTransaction ? String(editTransaction.amount) : "");
+  const [date, setDate] = useState(
+    editTransaction ? new Date(editTransaction.date + "T12:00:00") : new Date()
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0].label);
+  const [category, setCategory] = useState(
+    editTransaction?.category ?? EXPENSE_CATEGORIES[0].label
+  );
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(editTransaction?.description ?? "");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (editTransaction) {
+      setType(editTransaction.type);
+      setRawAmount(String(editTransaction.amount));
+      setDate(new Date(editTransaction.date + "T12:00:00"));
+      setCategory(editTransaction.category);
+      setDescription(editTransaction.description ?? "");
+    }
+  }, [editTransaction?.uuid]);
 
   const categories =
     type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -76,7 +91,9 @@ export default function TransactionScreen({ token, onUnauthorized }: Props) {
   function handleTypeChange(newType: TransactionType) {
     setType(newType);
     const cats = newType === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-    setCategory(cats[0].label);
+    if (!cats.find((c) => c.label === category)) {
+      setCategory(cats[0].label);
+    }
   }
 
   function handleAmountChange(text: string) {
@@ -98,8 +115,13 @@ export default function TransactionScreen({ token, onUnauthorized }: Props) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/transactions/`, {
-        method: "POST",
+      const url = isEditing
+        ? `${API_BASE_URL}/transactions/${editTransaction!.uuid}`
+        : `${API_BASE_URL}/transactions/`;
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -124,20 +146,26 @@ export default function TransactionScreen({ token, onUnauthorized }: Props) {
         throw new Error(JSON.stringify(err));
       }
 
-      Alert.alert(
-        "Guardado",
-        `${type === "income" ? "Ingreso" : "Gasto"} registrado correctamente.`,
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              setRawAmount("");
-              setDescription("");
-              setDate(new Date());
+      if (isEditing) {
+        Alert.alert("Guardado", "Transaccion actualizada correctamente.", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        Alert.alert(
+          "Guardado",
+          `${type === "income" ? "Ingreso" : "Gasto"} registrado correctamente.`,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setRawAmount("");
+                setDescription("");
+                setDate(new Date());
+              },
             },
-          },
-        ]
-      );
+          ]
+        );
+      }
     } catch (e: any) {
       Alert.alert("Error", `No se pudo guardar la transaccion.\n${e.message}`);
     } finally {
@@ -251,7 +279,11 @@ export default function TransactionScreen({ token, onUnauthorized }: Props) {
           disabled={loading}
         >
           <Text style={styles.submitText}>
-            {loading ? "Guardando..." : "Guardar"}
+            {loading
+              ? "Guardando..."
+              : isEditing
+                ? "Guardar cambios"
+                : "Guardar"}
           </Text>
         </TouchableOpacity>
       </ScrollView>
