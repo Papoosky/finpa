@@ -1,7 +1,9 @@
 import os
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +11,8 @@ from app.auth import create_access_token, hash_password, verify_password
 from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import RegisterRequest, TokenResponse
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -34,7 +38,10 @@ async def _create_user(body: RegisterRequest, db: AsyncSession) -> TokenResponse
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def register(
+    request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)
+):
     if not REGISTRATION_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -44,7 +51,9 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
@@ -64,7 +73,9 @@ admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @admin_router.post("/users", response_model=TokenResponse, status_code=201)
+@limiter.limit("3/minute")
 async def admin_create_user(
+    request: Request,
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
     x_admin_secret: str = Header(),
