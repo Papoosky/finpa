@@ -15,6 +15,7 @@ from app.services.sheet_service import init_sheet_service
 limiter = Limiter(key_func=get_remote_address)
 
 _INSECURE_SECRETS = {"change-me-in-production", "secret", ""}
+_IS_PRODUCTION = os.environ.get("ENV", "production") == "production"
 
 
 @asynccontextmanager
@@ -35,6 +36,9 @@ app = FastAPI(
     title="Finpa API",
     description="API para registrar y consultar transacciones personales",
     lifespan=lifespan,
+    docs_url=None if _IS_PRODUCTION else "/docs",
+    redoc_url=None if _IS_PRODUCTION else "/redoc",
+    openapi_url=None if _IS_PRODUCTION else "/openapi.json",
 )
 
 app.add_middleware(

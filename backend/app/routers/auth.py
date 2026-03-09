@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -24,6 +25,8 @@ from app.schemas.auth import (
     TokenResponse,
 )
 
+logger = logging.getLogger("finpa.security")
+
 limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -45,6 +48,8 @@ async def _create_user(body: RegisterRequest, db: AsyncSession) -> TokenResponse
     db.add(user)
     await db.commit()
     await db.refresh(user)
+
+    logger.info("user_registered email=%s uuid=%s", body.email, user.uuid)
 
     refresh = await create_refresh_token(user.id, db)
     return TokenResponse(
@@ -77,10 +82,21 @@ async def login(
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
+        logger.warning(
+            "login_failed email=%s ip=%s",
+            form_data.username,
+            request.client.host if request.client else "unknown",
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas",
         )
+
+    logger.info(
+        "login_success email=%s ip=%s",
+        form_data.username,
+        request.client.host if request.client else "unknown",
+    )
 
     refresh = await create_refresh_token(user.id, db)
     return TokenResponse(
@@ -128,8 +144,17 @@ async def admin_create_user(
     x_admin_secret: str = Header(),
 ):
     if not ADMIN_SECRET or x_admin_secret != ADMIN_SECRET:
+        logger.warning(
+            "admin_create_user_denied ip=%s",
+            request.client.host if request.client else "unknown",
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin secret invalido",
         )
+    logger.info(
+        "admin_create_user email=%s ip=%s",
+        body.email,
+        request.client.host if request.client else "unknown",
+    )
     return await _create_user(body, db)
