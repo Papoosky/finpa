@@ -26,14 +26,13 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./backend/app:/app/app
       - ./backend/credentials.json:/app/credentials.json:ro
-      - ./backend/alembic:/app/alembic
-      - ./backend/alembic.ini:/app/alembic.ini
     environment:
-      - ENV=development
+      - ENV=${ENV:-production}
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-finpa}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-finpa}
       - SECRET_KEY=${SECRET_KEY}
+      - REGISTRATION_ENABLED=${REGISTRATION_ENABLED:-false}
+      - ADMIN_SECRET=${ADMIN_SECRET:-}
       - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID:-}
       - GOOGLE_CREDENTIALS_PATH=/app/credentials.json
 
@@ -49,11 +48,6 @@ services:
     environment:
       - REACT_NATIVE_PACKAGER_HOSTNAME=${SERVER_IP}
       - EXPO_PUBLIC_API_URL=http://${SERVER_IP}:8000
-    volumes:
-      - ./mobile:/app
-      - /app/node_modules
-    stdin_open: true
-    tty: true
 
 volumes:
   pgdata:

@@ -1,0 +1,21 @@
+# Development overrides — loaded automatically by `docker compose up`
+# For production, use: docker compose -f docker-compose.yml up
+services:
+  backend:
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+    command: >
+      sh -c "uv run alembic upgrade head &&
+             uv run uvicorn app.main:app --reload --reload-dir /app/app --host 0.0.0.0 --port 8000"
+    environment:
+      - ENV=development
+      - REGISTRATION_ENABLED=true
+
+  mobile:
+    volumes:
+      - ./mobile:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true

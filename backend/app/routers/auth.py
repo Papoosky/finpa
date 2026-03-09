@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,9 +12,11 @@ from app.schemas.auth import RegisterRequest, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+REGISTRATION_ENABLED = os.environ.get("REGISTRATION_ENABLED", "true").lower() == "true"
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
-@router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+
+async def _create_user(body: RegisterRequest, db: AsyncSession) -> TokenResponse:
     result = await db.execute(select(User).where(User.email == body.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email ya registrado")
@@ -27,6 +31,16 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
 
     return TokenResponse(access_token=create_access_token(user.uuid))
+
+
+@router.post("/register", response_model=TokenResponse, status_code=201)
+async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    if not REGISTRATION_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registro deshabilitado",
+        )
+    return await _create_user(body, db)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -44,3 +58,20 @@ async def login(
         )
 
     return TokenResponse(access_token=create_access_token(user.uuid))
+
+
+admin_router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@admin_router.post("/users", response_model=TokenResponse, status_code=201)
+async def admin_create_user(
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+    x_admin_secret: str = Header(),
+):
+    if not ADMIN_SECRET or x_admin_secret != ADMIN_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin secret invalido",
+        )
+    return await _create_user(body, db)
