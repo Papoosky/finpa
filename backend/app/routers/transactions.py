@@ -1,7 +1,9 @@
 import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,11 +19,15 @@ from app.schemas.transaction import (
 )
 from app.services.sheet_service import get_sheet_service
 
+limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 @router.post("/", response_model=TransactionResponse, status_code=201)
+@limiter.limit("60/minute")
 async def create_transaction(
+    request: Request,
     body: TransactionCreate,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -47,7 +53,9 @@ async def create_transaction(
 
 
 @router.get("/", response_model=PaginatedTransactions)
+@limiter.limit("60/minute")
 async def list_transactions(
+    request: Request,
     type: str | None = Query(None),  # noqa: A002
     category: str | None = Query(None),
     date_from: datetime.date | None = Query(None),
@@ -84,7 +92,9 @@ async def list_transactions(
 
 
 @router.get("/{transaction_uuid}", response_model=TransactionResponse)
+@limiter.limit("60/minute")
 async def get_transaction(
+    request: Request,
     transaction_uuid: UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -93,7 +103,9 @@ async def get_transaction(
 
 
 @router.patch("/{transaction_uuid}", response_model=TransactionResponse)
+@limiter.limit("60/minute")
 async def update_transaction(
+    request: Request,
     transaction_uuid: UUID,
     body: TransactionUpdate,
     user: User = Depends(get_current_user),
@@ -111,7 +123,9 @@ async def update_transaction(
 
 
 @router.delete("/{transaction_uuid}", status_code=204)
+@limiter.limit("60/minute")
 async def delete_transaction(
+    request: Request,
     transaction_uuid: UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

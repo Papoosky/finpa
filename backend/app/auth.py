@@ -1,21 +1,26 @@
+import hashlib
 import os
+import secrets
 import time
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from jwt.exceptions import PyJWTError
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
+SECRET_KEY = os.environ["SECRET_KEY"]
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -39,8 +44,51 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(user_uuid: UUID) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {"sub": str(user_uuid), "exp": expire}
+    payload = {"sub": str(user_uuid), "exp": expire, "iat": datetime.now(UTC)}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+async def create_refresh_token(user_id: int, db: AsyncSession) -> str:
+    raw_token = secrets.token_urlsafe(48)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    expires_at = datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
+    refresh = RefreshToken(
+        token_hash=token_hash,
+        user_id=user_id,
+        expires_at=expires_at,
+    )
+    db.add(refresh)
+    await db.commit()
+    return raw_token
+
+
+async def verify_refresh_token(raw_token: str, db: AsyncSession) -> RefreshToken:
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    result = await db.execute(
+        select(RefreshToken).where(
+            RefreshToken.token_hash == token_hash,
+            RefreshToken.revoked.is_(False),
+        )
+    )
+    refresh = result.scalar_one_or_none()
+    if not refresh or refresh.expires_at < datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token invalido o expirado",
+        )
+    return refresh
+
+
+async def revoke_refresh_token(raw_token: str, db: AsyncSession) -> None:
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    result = await db.execute(
+        select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+    )
+    refresh = result.scalar_one_or_none()
+    if refresh:
+        refresh.revoked = True
+        await db.commit()
 
 
 async def get_current_user(
@@ -58,7 +106,7 @@ async def get_current_user(
         if user_uuid_str is None:
             raise credentials_exception
         user_uuid = UUID(user_uuid_str)
-    except (JWTError, ValueError) as err:
+    except (PyJWTError, ValueError) as err:
         raise credentials_exception from err
 
     # Check cache first

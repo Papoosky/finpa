@@ -197,8 +197,13 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
       }
       const data = await res.json();
       setTransactions(data.items ?? data);
-    } catch {
+    } catch (err) {
       setTransactions([]);
+      Alert.alert(
+        'Error de conexion',
+        'No se pudieron cargar las transacciones. Verifica tu conexion a internet.',
+      );
+      console.error('fetchTransactions error:', err);
     } finally {
       setLoading(false);
     }

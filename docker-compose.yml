@@ -4,15 +4,13 @@ services:
     container_name: finpa-db
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=finpa
-      - POSTGRES_PASSWORD=finpa
-      - POSTGRES_DB=finpa
+      - POSTGRES_USER=${POSTGRES_USER:-finpa}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-finpa}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finpa"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finpa}"]
       interval: 2s
       timeout: 3s
       retries: 10
@@ -28,14 +26,18 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./backend/app:/app/app
       - ./backend/credentials.json:/app/credentials.json:ro
-      - ./backend/alembic:/app/alembic
-      - ./backend/alembic.ini:/app/alembic.ini
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     environment:
-      - ENV=development
-      - DATABASE_URL=postgresql+asyncpg://finpa:finpa@db:5432/finpa
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ENV=${ENV:-production}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-finpa}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-finpa}
+      - SECRET_KEY=${SECRET_KEY}
+      - REGISTRATION_ENABLED=${REGISTRATION_ENABLED:-false}
+      - ADMIN_SECRET=${ADMIN_SECRET:-}
       - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID:-}
       - GOOGLE_CREDENTIALS_PATH=/app/credentials.json
 
@@ -51,11 +53,6 @@ services:
     environment:
       - REACT_NATIVE_PACKAGER_HOSTNAME=${SERVER_IP}
       - EXPO_PUBLIC_API_URL=http://${SERVER_IP}:8000
-    volumes:
-      - ./mobile:/app
-      - /app/node_modules
-    stdin_open: true
-    tty: true
 
 volumes:
   pgdata:
