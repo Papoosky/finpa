@@ -82,6 +82,31 @@ EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
 - All `/transactions/` endpoints require `Authorization: Bearer <token>` header
 - Transactions are scoped to the authenticated user (full isolation)
 
+## Linting & formatting
+
+### Backend
+- **Ruff** for linting and formatting. Config in `backend/pyproject.toml` under `[tool.ruff]`
+- **ty** for type checking (Astral's type checker, pre-1.0). Config in `backend/pyproject.toml` under `[tool.ty]`
+- Run: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run ty check .`
+- Auto-fix: `cd backend && uv run ruff check --fix . && uv run ruff format .`
+
+### Mobile
+- **ESLint 9** (flat config) + **Prettier** for linting and formatting
+- Config: `mobile/eslint.config.mjs`, `mobile/.prettierrc`
+- Run: `cd mobile && npm run lint && npm run format:check`
+- Auto-fix: `cd mobile && npm run lint:fix && npm run format`
+
+### Pre-commit hooks
+- All linters run automatically on `git commit` via pre-commit
+- Config: `.pre-commit-config.yaml`
+- Manual run: `pre-commit run --all-files`
+- Hooks: trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files, ruff, ruff-format, ty, eslint, prettier
+
+### Docker hot reload
+- Backend: uvicorn runs with `--reload` — edit files in `backend/app/` and changes are picked up automatically
+- Mobile: source code is volume-mounted — Expo Fast Refresh picks up changes without container rebuild
+- New npm/pip deps still require `docker compose build <service>`
+
 ## Key conventions
 - All DB models use `id` (integer PK, internal) and `uuid` (exposed to API/clients). Joins and FKs use `id`; API responses and URL params use `uuid`
 - JWT tokens encode the user's `uuid` in the `sub` claim

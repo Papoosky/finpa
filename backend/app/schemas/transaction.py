@@ -1,11 +1,11 @@
 import datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
+
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
-class TransactionType(str, Enum):
+class TransactionType(StrEnum):
     income = "income"
     expense = "expense"
 
@@ -15,15 +15,15 @@ class TransactionCreate(BaseModel):
     amount: float = Field(..., gt=0)
     date: datetime.date
     category: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class TransactionUpdate(BaseModel):
-    type: Optional[TransactionType] = None
-    amount: Optional[float] = Field(default=None, gt=0)
-    date: Optional[datetime.date] = None
-    category: Optional[str] = None
-    description: Optional[str] = None
+    type: TransactionType | None = None
+    amount: float | None = Field(default=None, gt=0)
+    date: datetime.date | None = None
+    category: str | None = None
+    description: str | None = None
 
 
 class TransactionResponse(BaseModel):
@@ -32,7 +32,7 @@ class TransactionResponse(BaseModel):
     amount: float
     date: datetime.date
     category: str
-    description: Optional[str]
+    description: str | None
 
     model_config = {"from_attributes": True}
 

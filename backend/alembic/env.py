@@ -7,12 +7,12 @@ from pathlib import Path
 # Ensure the backend root (/app) is on sys.path so "app" package is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from alembic import context
 from app.database import Base
-from app.models import User, Transaction  # noqa: F401 — ensure models are registered
+from app.models import Transaction, User  # noqa: F401 — ensure models are registered
 
 config = context.config
 
@@ -43,7 +43,7 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    connectable = create_async_engine(db_url, poolclass=pool.NullPool)
+    connectable = create_async_engine(db_url, poolclass=pool.NullPool)  # ty: ignore[invalid-argument-type]  # db_url fallback is handled by alembic.ini
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

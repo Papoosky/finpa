@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
@@ -38,7 +38,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(user_uuid: UUID) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {"sub": str(user_uuid), "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -58,8 +58,8 @@ async def get_current_user(
         if user_uuid_str is None:
             raise credentials_exception
         user_uuid = UUID(user_uuid_str)
-    except (JWTError, ValueError):
-        raise credentials_exception
+    except (JWTError, ValueError) as err:
+        raise credentials_exception from err
 
     # Check cache first
     cached = _user_cache.get(user_uuid)
@@ -67,10 +67,8 @@ async def get_current_user(
         user, ts = cached
         if time.monotonic() - ts < _USER_CACHE_TTL:
             # Merge cached user into current session so lazy loads work
-            user = await db.merge(user)
-            return user
-        else:
-            del _user_cache[user_uuid]
+            return await db.merge(user)
+        del _user_cache[user_uuid]
 
     result = await db.execute(select(User).where(User.uuid == user_uuid))
     user = result.scalar_one_or_none()

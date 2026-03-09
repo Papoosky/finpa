@@ -1,0 +1,39 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty (backend type checker)
+        entry: bash -c 'cd backend && uv run ty check'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+      - id: eslint
+        name: eslint (mobile)
+        entry: bash -c 'args=(); for f in "$@"; do args+=("${f#mobile/}"); done; cd mobile && npx eslint --max-warnings=0 "${args[@]}"' --
+        language: system
+        files: ^mobile/.*\.(ts|tsx)$
+        types: [file]
+      - id: prettier
+        name: prettier (mobile)
+        entry: bash -c 'args=(); for f in "$@"; do args+=("${f#mobile/}"); done; cd mobile && npx prettier --check "${args[@]}"' --
+        language: system
+        files: ^mobile/.*\.(ts|tsx|json)$
+        types: [file]

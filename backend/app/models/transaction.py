@@ -1,8 +1,16 @@
+from __future__ import annotations
+
+import datetime  # noqa: TC003 - needed at runtime by SQLAlchemy Mapped[]
 import uuid as _uuid
-import datetime
-from sqlalchemy import Index, Integer, String, Float, Date, ForeignKey, Uuid
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Date, Float, ForeignKey, Index, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class Transaction(Base):
@@ -14,7 +22,9 @@ class Transaction(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    uuid: Mapped[_uuid.UUID] = mapped_column(Uuid, unique=True, index=True, default=_uuid.uuid4)
+    uuid: Mapped[_uuid.UUID] = mapped_column(
+        Uuid, unique=True, index=True, default=_uuid.uuid4
+    )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     type: Mapped[str] = mapped_column(String(10))
     amount: Mapped[float] = mapped_column(Float)
@@ -22,4 +32,4 @@ class Transaction(Base):
     category: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    user: Mapped["User"] = relationship(back_populates="transactions")
+    user: Mapped[User] = relationship(back_populates="transactions")

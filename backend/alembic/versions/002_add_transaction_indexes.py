@@ -5,6 +5,7 @@ Revises: 001
 Create Date: 2026-03-08
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -19,7 +20,9 @@ def upgrade() -> None:
     op.create_index("ix_transactions_date", "transactions", ["date"])
     op.create_index("ix_transactions_user_date", "transactions", ["user_id", "date"])
     op.create_index("ix_transactions_user_type", "transactions", ["user_id", "type"])
-    op.create_index("ix_transactions_user_category", "transactions", ["user_id", "category"])
+    op.create_index(
+        "ix_transactions_user_category", "transactions", ["user_id", "category"]
+    )
 
 
 def downgrade() -> None:

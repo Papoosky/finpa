@@ -19,3 +19,59 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pydantic[email]>=2.6.4",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.5",
+    "ty>=0.0.21",
+]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.rules]
+possibly-missing-attribute = "warn"
+possibly-missing-import = "warn"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort (import sorting)
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "TCH",   # flake8-type-checking
+    "RUF",   # ruff-specific rules
+    "N",     # pep8-naming
+    "S",     # flake8-bandit (security)
+    "A",     # flake8-builtins
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "T20",   # flake8-print
+    "PT",    # flake8-pytest-style
+    "RET",   # flake8-return
+    "ASYNC", # flake8-async
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "S105",   # possible hardcoded password (false positives with default args)
+    "S106",   # same as above
+    "B008",   # do not perform function call in argument defaults (needed for FastAPI Depends())
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports OK in __init__
+"alembic/*" = ["E", "W", "UP"]  # alembic auto-generated code
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

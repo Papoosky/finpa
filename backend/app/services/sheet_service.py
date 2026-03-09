@@ -19,7 +19,7 @@ class SheetService:
         spreadsheet_id = os.environ.get("GOOGLE_SHEETS_ID")
 
         gc = gspread.service_account(filename=credentials_path)
-        spreadsheet = gc.open_by_key(spreadsheet_id)
+        spreadsheet = gc.open_by_key(spreadsheet_id)  # ty: ignore[invalid-argument-type]  # spreadsheet_id is always str when SheetService is instantiated (guarded by init_sheet_service)
         self.worksheet = spreadsheet.worksheet("transacciones")
         self._ensure_headers()
 
@@ -52,5 +52,5 @@ def init_sheet_service() -> None:
         logger.warning("Could not initialize sheet service: %s", e)
 
 
-def get_sheet_service() -> Optional[SheetService]:
+def get_sheet_service() -> SheetService | None:
     return _sheet_service

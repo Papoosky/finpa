@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -6,18 +6,17 @@ import {
   SectionList,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
-} from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { API_BASE_URL } from "../config";
-import { CATEGORY_EMOJI_MAP } from "../constants/categories";
-import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
-import MonthYearPicker from "../components/MonthYearPicker";
+} from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { API_BASE_URL } from '../config';
+import { CATEGORY_EMOJI_MAP } from '../constants/categories';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import MonthYearPicker from '../components/MonthYearPicker';
 
 type Transaction = {
   uuid: string;
-  type: "income" | "expense";
+  type: 'income' | 'expense';
   amount: number;
   date: string;
   category: string;
@@ -35,15 +34,15 @@ type Props = {
 };
 
 function formatAmount(n: number): string {
-  return "$" + n.toLocaleString("es-CL");
+  return '$' + n.toLocaleString('es-CL');
 }
 
 function formatSectionDate(dateStr: string): string {
-  const date = new Date(dateStr + "T12:00:00");
-  const formatted = date.toLocaleDateString("es-CL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
+  const date = new Date(dateStr + 'T12:00:00');
+  const formatted = date.toLocaleDateString('es-CL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
   });
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
@@ -61,10 +60,6 @@ function SwipeableRow({
 }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
-
-  const panResponder = useRef(
-    Animated.event([], { useNativeDriver: false })
-  ).current;
 
   const onTouchStart = useRef({ x: 0, y: 0, time: 0 }).current;
   const isTracking = useRef(false);
@@ -143,9 +138,7 @@ function SwipeableRow({
       >
         <View style={swipeStyles.content}>
           <View style={swipeStyles.left}>
-            <Text style={swipeStyles.emoji}>
-              {CATEGORY_EMOJI_MAP[item.category] || "📌"}
-            </Text>
+            <Text style={swipeStyles.emoji}>{CATEGORY_EMOJI_MAP[item.category] || '📌'}</Text>
             <View>
               <Text style={swipeStyles.category}>{item.category}</Text>
               {item.description ? (
@@ -156,12 +149,10 @@ function SwipeableRow({
             </View>
           </View>
           <Text
-            style={[
-              swipeStyles.amount,
-              { color: item.type === "income" ? "#22c55e" : "#ef4444" },
-            ]}
+            style={[swipeStyles.amount, { color: item.type === 'income' ? '#22c55e' : '#ef4444' }]}
           >
-            {item.type === "income" ? "+" : "-"}{formatAmount(item.amount)}
+            {item.type === 'income' ? '+' : '-'}
+            {formatAmount(item.amount)}
           </Text>
         </View>
       </Animated.View>
@@ -170,6 +161,7 @@ function SwipeableRow({
 }
 
 export default function HistoryScreen({ token, onUnauthorized }: Props) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -179,22 +171,25 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
 
   const selectedYear = month.getFullYear();
   const selectedMonth = month.getMonth();
-  const dateFrom = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
+  const dateFrom = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
   const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-  const dateTo = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const dateTo = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-  useFocusEffect(
-    useCallback(() => {
+  const fetchCb = useCallback(
+    () => {
       fetchTransactions();
-    }, [dateFrom, dateTo])
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dateFrom, dateTo],
   );
+  useFocusEffect(fetchCb);
 
   async function fetchTransactions() {
     setLoading(true);
     try {
       const res = await fetch(
         `${API_BASE_URL}/transactions/?date_from=${dateFrom}&date_to=${dateTo}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       if (res.status === 401) {
         onUnauthorized();
@@ -209,9 +204,12 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
     }
   }
 
-  const handleEdit = useCallback((transaction: Transaction) => {
-    navigation.navigate("Transaction", { transaction });
-  }, [navigation]);
+  const handleEdit = useCallback(
+    (transaction: Transaction) => {
+      navigation.navigate('Transaction', { transaction });
+    },
+    [navigation],
+  );
 
   const handleDeleteRequest = useCallback((transaction: Transaction) => {
     setDeleteTarget(transaction);
@@ -221,24 +219,21 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/transactions/${deleteTarget.uuid}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await fetch(`${API_BASE_URL}/transactions/${deleteTarget.uuid}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.status === 401) {
         onUnauthorized();
         return;
       }
       if (!res.ok) {
-        throw new Error("Error al eliminar");
+        throw new Error('Error al eliminar');
       }
       setDeleteTarget(null);
       fetchTransactions();
-    } catch (e: any) {
-      Alert.alert("Error", e.message);
+    } catch (e: unknown) {
+      Alert.alert('Error', e instanceof Error ? e.message : String(e));
     } finally {
       setDeleting(false);
     }
@@ -295,11 +290,7 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
             <Text style={styles.sectionHeader}>{section.title}</Text>
           )}
           renderItem={({ item }) => (
-            <SwipeableRow
-              item={item}
-              onEdit={handleEdit}
-              onDelete={handleDeleteRequest}
-            />
+            <SwipeableRow item={item} onEdit={handleEdit} onDelete={handleDeleteRequest} />
           )}
           contentContainerStyle={styles.list}
           stickySectionHeadersEnabled={false}
@@ -320,44 +311,44 @@ export default function HistoryScreen({ token, onUnauthorized }: Props) {
 const swipeStyles = StyleSheet.create({
   container: {
     marginBottom: 2,
-    overflow: "hidden",
+    overflow: 'hidden',
     borderRadius: 10,
   },
   action: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     bottom: 0,
-    justifyContent: "center",
+    justifyContent: 'center',
     paddingHorizontal: 24,
   },
   editAction: {
     left: 0,
-    backgroundColor: "#3b82f6",
+    backgroundColor: '#3b82f6',
     borderRadius: 10,
   },
   deleteAction: {
     right: 0,
-    backgroundColor: "#ef4444",
+    backgroundColor: '#ef4444',
     borderRadius: 10,
   },
   actionText: {
-    color: "#ffffff",
+    color: '#ffffff',
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   row: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderRadius: 10,
   },
   content: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 14,
   },
   left: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
     flex: 1,
   },
@@ -366,33 +357,33 @@ const swipeStyles = StyleSheet.create({
   },
   category: {
     fontSize: 15,
-    fontWeight: "600",
-    color: "#111827",
+    fontWeight: '600',
+    color: '#111827',
   },
   description: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: '#9ca3af',
     marginTop: 2,
     maxWidth: 180,
   },
   amount: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: '700',
   },
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
   },
   centered: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   pickerRow: {
-    alignItems: "center",
+    alignItems: 'center',
     paddingVertical: 16,
   },
   list: {
@@ -401,15 +392,15 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#6b7280",
+    fontWeight: '600',
+    color: '#6b7280',
     marginTop: 16,
     marginBottom: 8,
     paddingHorizontal: 4,
   },
   emptyText: {
-    textAlign: "center",
-    color: "#9ca3af",
+    textAlign: 'center',
+    color: '#9ca3af',
     fontSize: 16,
   },
 });

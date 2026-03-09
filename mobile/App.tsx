@@ -1,27 +1,21 @@
-import "react-native-gesture-handler";
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import 'react-native-gesture-handler';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
   DrawerItemList,
   DrawerContentComponentProps,
-} from "@react-navigation/drawer";
-import { StatusBar } from "expo-status-bar";
-import * as SecureStore from "expo-secure-store";
-import AuthScreen from "./AuthScreen";
-import DashboardScreen from "./screens/DashboardScreen";
-import TransactionScreen from "./screens/TransactionScreen";
-import HistoryScreen from "./screens/HistoryScreen";
+} from '@react-navigation/drawer';
+import { StatusBar } from 'expo-status-bar';
+import * as SecureStore from 'expo-secure-store';
+import AuthScreen from './AuthScreen';
+import DashboardScreen from './screens/DashboardScreen';
+import TransactionScreen from './screens/TransactionScreen';
+import HistoryScreen from './screens/HistoryScreen';
 
-const TOKEN_KEY = "finpa_token";
+const TOKEN_KEY = 'finpa_token';
 const Drawer = createDrawerNavigator();
 
 function CustomDrawerContent({
@@ -86,28 +80,28 @@ export default function App() {
         <Drawer.Navigator
           drawerContent={(props) => <CustomDrawerContent {...props} onLogout={handleLogout} />}
           screenOptions={{
-            headerStyle: { backgroundColor: "#f9fafb", elevation: 0, shadowOpacity: 0 },
-            headerTintColor: "#111827",
-            headerTitleStyle: { fontWeight: "700" },
-            drawerActiveTintColor: "#3b82f6",
-            drawerLabelStyle: { fontSize: 15, fontWeight: "600" },
+            headerStyle: { backgroundColor: '#f9fafb', elevation: 0, shadowOpacity: 0 },
+            headerTintColor: '#111827',
+            headerTitleStyle: { fontWeight: '700' },
+            drawerActiveTintColor: '#3b82f6',
+            drawerLabelStyle: { fontSize: 15, fontWeight: '600' },
           }}
         >
           <Drawer.Screen
             name="Dashboard"
-            options={{ drawerLabel: "📊 Dashboard", title: "Dashboard" }}
+            options={{ drawerLabel: '📊 Dashboard', title: 'Dashboard' }}
           >
             {() => <DashboardScreen token={token!} onUnauthorized={handleLogout} />}
           </Drawer.Screen>
           <Drawer.Screen
             name="Transaction"
-            options={{ drawerLabel: "💸 Nueva transaccion", title: "Nueva transaccion" }}
+            options={{ drawerLabel: '💸 Nueva transaccion', title: 'Nueva transaccion' }}
           >
             {() => <TransactionScreen token={token!} onUnauthorized={handleLogout} />}
           </Drawer.Screen>
           <Drawer.Screen
             name="History"
-            options={{ drawerLabel: "📋 Historial", title: "Historial" }}
+            options={{ drawerLabel: '📋 Historial', title: 'Historial' }}
           >
             {() => <HistoryScreen token={token!} onUnauthorized={handleLogout} />}
           </Drawer.Screen>
@@ -120,14 +114,14 @@ export default function App() {
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f9fafb",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
   },
   drawerTitle: {
     fontSize: 24,
-    fontWeight: "800",
-    color: "#111827",
+    fontWeight: '800',
+    color: '#111827',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 20,
@@ -135,11 +129,11 @@ const styles = StyleSheet.create({
   logoutBtn: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: "#f3f4f6",
+    borderTopColor: '#f3f4f6',
   },
   logoutText: {
     fontSize: 15,
-    fontWeight: "600",
-    color: "#ef4444",
+    fontWeight: '600',
+    color: '#ef4444',
   },
 });

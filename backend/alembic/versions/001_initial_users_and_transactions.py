@@ -5,10 +5,12 @@ Revises:
 Create Date: 2026-03-07
 
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision: str = "001"
 down_revision: Union[str, None] = None
@@ -24,14 +26,22 @@ def upgrade() -> None:
         sa.Column("email", sa.String(255), unique=True, nullable=False, index=True),
         sa.Column("hashed_password", sa.String(255), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("sync_to_sheets", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "sync_to_sheets", sa.Boolean(), nullable=False, server_default="false"
+        ),
     )
 
     op.create_table(
         "transactions",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("uuid", sa.Uuid(), unique=True, nullable=False, index=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False, index=True),
+        sa.Column(
+            "user_id",
+            sa.Integer(),
+            sa.ForeignKey("users.id"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("type", sa.String(10), nullable=False),
         sa.Column("amount", sa.Float(), nullable=False),
         sa.Column("date", sa.Date(), nullable=False),

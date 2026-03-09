@@ -1,5 +1,4 @@
 import datetime
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -49,10 +48,10 @@ async def create_transaction(
 
 @router.get("/", response_model=PaginatedTransactions)
 async def list_transactions(
-    type: Optional[str] = Query(None),
-    category: Optional[str] = Query(None),
-    date_from: Optional[datetime.date] = Query(None),
-    date_to: Optional[datetime.date] = Query(None),
+    type: str | None = Query(None),  # noqa: A002
+    category: str | None = Query(None),
+    date_from: datetime.date | None = Query(None),
+    date_to: datetime.date | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
@@ -77,7 +76,7 @@ async def list_transactions(
     result = await db.execute(stmt)
 
     return PaginatedTransactions(
-        items=result.scalars().all(),
+        items=result.scalars().all(),  # ty: ignore[invalid-argument-type]  # Sequence[Transaction] is compatible with list[TransactionResponse] via Pydantic
         total=total,
         limit=limit,
         offset=offset,
@@ -90,8 +89,7 @@ async def get_transaction(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    txn = await _get_user_transaction(db, transaction_uuid, user.id)
-    return txn
+    return await _get_user_transaction(db, transaction_uuid, user.id)
 
 
 @router.patch("/{transaction_uuid}", response_model=TransactionResponse)

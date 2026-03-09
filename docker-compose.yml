@@ -51,6 +51,9 @@ services:
     environment:
       - REACT_NATIVE_PACKAGER_HOSTNAME=${SERVER_IP}
       - EXPO_PUBLIC_API_URL=http://${SERVER_IP}:8000
+    volumes:
+      - ./mobile:/app
+      - /app/node_modules
     stdin_open: true
     tty: true
 

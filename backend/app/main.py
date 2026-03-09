@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.database import engine, Base
+from app.database import Base, engine
 from app.routers import auth, transactions
 from app.services.sheet_service import init_sheet_service
 
