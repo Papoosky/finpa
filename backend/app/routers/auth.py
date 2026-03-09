@@ -7,10 +7,22 @@ from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import create_access_token, hash_password, verify_password
+from app.auth import (
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+    revoke_refresh_token,
+    verify_password,
+    verify_refresh_token,
+)
 from app.database import get_db
 from app.models.user import User
-from app.schemas.auth import RegisterRequest, TokenResponse
+from app.schemas.auth import (
+    LogoutRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+)
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -34,7 +46,11 @@ async def _create_user(body: RegisterRequest, db: AsyncSession) -> TokenResponse
     await db.commit()
     await db.refresh(user)
 
-    return TokenResponse(access_token=create_access_token(user.uuid))
+    refresh = await create_refresh_token(user.id, db)
+    return TokenResponse(
+        access_token=create_access_token(user.uuid),
+        refresh_token=refresh,
+    )
 
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
@@ -66,7 +82,38 @@ async def login(
             detail="Credenciales incorrectas",
         )
 
-    return TokenResponse(access_token=create_access_token(user.uuid))
+    refresh = await create_refresh_token(user.id, db)
+    return TokenResponse(
+        access_token=create_access_token(user.uuid),
+        refresh_token=refresh,
+    )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def refresh(
+    request: Request, body: RefreshRequest, db: AsyncSession = Depends(get_db)
+):
+    refresh_record = await verify_refresh_token(body.refresh_token, db)
+
+    # Rotate: revoke old, issue new
+    refresh_record.revoked = True
+    await db.commit()
+
+    user = refresh_record.user
+    new_refresh = await create_refresh_token(user.id, db)
+    return TokenResponse(
+        access_token=create_access_token(user.uuid),
+        refresh_token=new_refresh,
+    )
+
+
+@router.post("/logout", status_code=204)
+@limiter.limit("10/minute")
+async def logout(
+    request: Request, body: LogoutRequest, db: AsyncSession = Depends(get_db)
+):
+    await revoke_refresh_token(body.refresh_token, db)
 
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
