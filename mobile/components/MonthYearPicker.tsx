@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../theme/ThemeProvider';
 
 const MONTH_NAMES = [
   'Enero',
@@ -33,6 +34,7 @@ export default function MonthYearPicker({
   onChangeMonth,
   onChangeYear,
 }: Props) {
+  const { colors } = useTheme();
   const [visible, setVisible] = useState(false);
   const [modalYear, setModalYear] = useState(selectedYear);
 
@@ -84,6 +86,108 @@ export default function MonthYearPicker({
       setModalYear(newYear);
     }
   }
+
+  const styles = StyleSheet.create({
+    button: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      gap: 6,
+      alignSelf: 'center',
+    },
+    buttonText: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      textTransform: 'capitalize',
+    },
+    chevron: {
+      fontSize: 14,
+      color: colors.textMuted,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    sheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '55%',
+      paddingBottom: 34,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderSubtle,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    close: {
+      fontSize: 15,
+      color: colors.textSecondary,
+    },
+    yearRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 12,
+      gap: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderSubtle,
+    },
+    yearArrow: {
+      fontSize: 24,
+      color: colors.textSecondary,
+      paddingHorizontal: 12,
+    },
+    yearLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    disabled: {
+      opacity: 0.3,
+    },
+    option: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderSubtle,
+    },
+    optionSelected: {
+      backgroundColor: colors.accentSoft,
+    },
+    optionText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    optionTextSelected: {
+      color: colors.accent,
+      fontWeight: '700',
+    },
+    optionTextDisabled: {
+      color: colors.textMuted,
+    },
+    checkmark: {
+      fontSize: 18,
+      color: colors.accent,
+    },
+  });
 
   return (
     <>
@@ -181,105 +285,3 @@ export default function MonthYearPicker({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6,
-    alignSelf: 'center',
-  },
-  buttonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
-    textTransform: 'capitalize',
-  },
-  chevron: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '55%',
-    paddingBottom: 34,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  close: {
-    fontSize: 15,
-    color: '#6b7280',
-  },
-  yearRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  yearArrow: {
-    fontSize: 24,
-    color: '#6b7280',
-    paddingHorizontal: 12,
-  },
-  yearLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  disabled: {
-    opacity: 0.3,
-  },
-  option: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f9fafb',
-  },
-  optionSelected: {
-    backgroundColor: '#eff6ff',
-  },
-  optionText: {
-    fontSize: 16,
-    color: '#374151',
-  },
-  optionTextSelected: {
-    color: '#3b82f6',
-    fontWeight: '700',
-  },
-  optionTextDisabled: {
-    color: '#d1d5db',
-  },
-  checkmark: {
-    fontSize: 18,
-    color: '#3b82f6',
-  },
-});

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CATEGORY_EMOJI_MAP } from '../constants/categories';
+import { useTheme } from '../theme/ThemeProvider';
 
 type Transaction = {
   uuid: string;
@@ -22,10 +23,82 @@ function formatAmount(n: number): string {
 }
 
 function ConfirmDeleteModal({ visible, transaction, loading, onConfirm, onCancel }: Props) {
+  const { colors } = useTheme();
+
   if (!transaction) return null;
 
   const emoji = CATEGORY_EMOJI_MAP[transaction.category] || '📌';
   const isIncome = transaction.type === 'income';
+
+  const styles = StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 32,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 340,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    detail: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 24,
+    },
+    detailText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    detailAmount: {
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    buttons: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    cancelBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 10,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+    },
+    cancelText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    deleteBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 10,
+      backgroundColor: colors.danger,
+      alignItems: 'center',
+    },
+    deleteText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.surface,
+    },
+  });
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -36,7 +109,9 @@ function ConfirmDeleteModal({ visible, transaction, loading, onConfirm, onCancel
             <Text style={styles.detailText}>
               {emoji} {transaction.category}
             </Text>
-            <Text style={[styles.detailAmount, { color: isIncome ? '#22c55e' : '#ef4444' }]}>
+            <Text
+              style={[styles.detailAmount, { color: isIncome ? colors.income : colors.danger }]}
+            >
               {isIncome ? '+' : '-'}
               {formatAmount(transaction.amount)}
             </Text>
@@ -51,7 +126,7 @@ function ConfirmDeleteModal({ visible, transaction, loading, onConfirm, onCancel
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={colors.surface} />
               ) : (
                 <Text style={styles.deleteText}>Eliminar</Text>
               )}
@@ -64,73 +139,3 @@ function ConfirmDeleteModal({ visible, transaction, loading, onConfirm, onCancel
 }
 
 export default React.memo(ConfirmDeleteModal);
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 340,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  detail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 24,
-  },
-  detailText: {
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  detailAmount: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  buttons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  deleteBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-  },
-  deleteText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-});

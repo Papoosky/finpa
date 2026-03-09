@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import {
   createDrawerNavigator,
@@ -9,57 +9,116 @@ import {
   DrawerContentComponentProps,
 } from '@react-navigation/drawer';
 import { StatusBar } from 'expo-status-bar';
-import * as SecureStore from 'expo-secure-store';
-import AuthScreen from './AuthScreen';
+import ToastMessage from 'react-native-toast-message';
+import { ThemeProvider, useTheme } from './theme/ThemeProvider';
+import { useAuthStore } from './stores/authStore';
+import { useThemeStore } from './stores/themeStore';
+import { Text, toastConfig } from './components/ui';
+import AuthScreen from './screens/AuthScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import TransactionScreen from './screens/TransactionScreen';
 import HistoryScreen from './screens/HistoryScreen';
 
-const TOKEN_KEY = 'finpa_token';
 const Drawer = createDrawerNavigator();
 
-function CustomDrawerContent({
-  onLogout,
-  ...props
-}: DrawerContentComponentProps & { onLogout: () => void }) {
+function CustomDrawerContent(props: DrawerContentComponentProps) {
+  const { colors } = useTheme();
+  const logout = useAuthStore((s) => s.logout);
+  const { isDark, toggleTheme } = useThemeStore();
+
   return (
-    <View style={{ flex: 1 }}>
-      <DrawerContentScrollView {...props}>
-        <Text style={styles.drawerTitle}>Finpa</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <DrawerContentScrollView {...props} style={{ backgroundColor: colors.background }}>
+        <Text
+          variant="displayMedium"
+          style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 }}
+        >
+          Finpa
+        </Text>
         <DrawerItemList {...props} />
       </DrawerContentScrollView>
-      <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-        <Text style={styles.logoutText}>Cerrar sesion</Text>
-      </TouchableOpacity>
+      <View style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
+        <TouchableOpacity
+          style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          onPress={toggleTheme}
+        >
+          <Text variant="bodyLarge">{isDark ? '☀️' : '🌙'}</Text>
+          <Text variant="bodyMedium" color="textSecondary">
+            {isDark ? 'Modo claro' : 'Modo oscuro'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 20, paddingTop: 0 }} onPress={logout}>
+          <Text variant="bodyMedium" style={{ color: colors.danger, fontWeight: '600' }}>
+            Cerrar sesion
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
-export default function App() {
-  const [token, setToken] = useState<string | null>(null);
-  const [checkingToken, setCheckingToken] = useState(true);
+function AppNavigator() {
+  const { colors, isDark } = useTheme();
+
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavigationContainer>
+        <Drawer.Navigator
+          drawerContent={(props) => <CustomDrawerContent {...props} />}
+          screenOptions={{
+            headerStyle: { backgroundColor: colors.background, elevation: 0, shadowOpacity: 0 },
+            headerTintColor: colors.textPrimary,
+            headerTitleStyle: { fontWeight: '700' },
+            drawerActiveTintColor: colors.accent,
+            drawerInactiveTintColor: colors.textSecondary,
+            drawerLabelStyle: { fontSize: 15, fontWeight: '600' },
+            drawerStyle: { backgroundColor: colors.background },
+            sceneStyle: { backgroundColor: colors.background },
+          }}
+        >
+          <Drawer.Screen
+            name="Dashboard"
+            component={DashboardScreen}
+            options={{ drawerLabel: '📊 Dashboard', title: 'Dashboard' }}
+          />
+          <Drawer.Screen
+            name="Transaction"
+            component={TransactionScreen}
+            options={{ drawerLabel: '💸 Nueva transaccion', title: 'Nueva transaccion' }}
+          />
+          <Drawer.Screen
+            name="History"
+            component={HistoryScreen}
+            options={{ drawerLabel: '📋 Historial', title: 'Historial' }}
+          />
+        </Drawer.Navigator>
+      </NavigationContainer>
+      <ToastMessage config={toastConfig} />
+    </>
+  );
+}
+
+function AuthGate() {
+  const { token, isInitialized, initialize } = useAuthStore();
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
-    SecureStore.getItemAsync(TOKEN_KEY).then((stored) => {
-      if (stored) setToken(stored);
-      setCheckingToken(false);
-    });
-  }, []);
+    initialize();
+  }, [initialize]);
 
-  async function handleAuth(newToken: string) {
-    await SecureStore.setItemAsync(TOKEN_KEY, newToken);
-    setToken(newToken);
-  }
-
-  const handleLogout = useCallback(async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    setToken(null);
-  }, []);
-
-  if (checkingToken) {
+  if (!isInitialized) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -67,73 +126,20 @@ export default function App() {
   if (!token) {
     return (
       <>
-        <StatusBar style="dark" />
-        <AuthScreen onAuth={handleAuth} />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <AuthScreen />
+        <ToastMessage config={toastConfig} />
       </>
     );
   }
 
-  return (
-    <>
-      <StatusBar style="dark" />
-      <NavigationContainer>
-        <Drawer.Navigator
-          drawerContent={(props) => <CustomDrawerContent {...props} onLogout={handleLogout} />}
-          screenOptions={{
-            headerStyle: { backgroundColor: '#f9fafb', elevation: 0, shadowOpacity: 0 },
-            headerTintColor: '#111827',
-            headerTitleStyle: { fontWeight: '700' },
-            drawerActiveTintColor: '#3b82f6',
-            drawerLabelStyle: { fontSize: 15, fontWeight: '600' },
-          }}
-        >
-          <Drawer.Screen
-            name="Dashboard"
-            options={{ drawerLabel: '📊 Dashboard', title: 'Dashboard' }}
-          >
-            {() => <DashboardScreen token={token!} onUnauthorized={handleLogout} />}
-          </Drawer.Screen>
-          <Drawer.Screen
-            name="Transaction"
-            options={{ drawerLabel: '💸 Nueva transaccion', title: 'Nueva transaccion' }}
-          >
-            {() => <TransactionScreen token={token!} onUnauthorized={handleLogout} />}
-          </Drawer.Screen>
-          <Drawer.Screen
-            name="History"
-            options={{ drawerLabel: '📋 Historial', title: 'Historial' }}
-          >
-            {() => <HistoryScreen token={token!} onUnauthorized={handleLogout} />}
-          </Drawer.Screen>
-        </Drawer.Navigator>
-      </NavigationContainer>
-    </>
-  );
+  return <AppNavigator />;
 }
 
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-  },
-  drawerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 20,
-  },
-  logoutBtn: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  logoutText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#ef4444',
-  },
-});
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AuthGate />
+    </ThemeProvider>
+  );
+}

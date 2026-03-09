@@ -12,7 +12,7 @@ COPY alembic.ini /app/
 COPY alembic/ /app/alembic/
 COPY app/ /app/app/
 
-RUN useradd --no-create-home --shell /bin/false appuser && chown -R appuser:appuser /app
+RUN useradd --create-home --shell /bin/false appuser && chown -R appuser:appuser /app
 USER appuser
 
 CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn app.main:app --workers 2 --host 0.0.0.0 --port 8000"]
