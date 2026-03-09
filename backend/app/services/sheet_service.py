@@ -30,7 +30,7 @@ class SheetService:
 
     def add_transaction(self, txn) -> None:
         row = [
-            str(txn.id),
+            str(txn.uuid),
             txn.type,
             txn.date.isoformat(),
             txn.amount,

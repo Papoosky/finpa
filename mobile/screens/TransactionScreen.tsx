@@ -142,7 +142,7 @@ export default function TransactionScreen({ token, onUnauthorized }: Props) {
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(JSON.stringify(err));
+        throw new Error(err.detail || 'Error al guardar la transaccion');
       }
 
       if (isEditing) {

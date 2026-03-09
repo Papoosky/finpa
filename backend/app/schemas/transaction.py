@@ -14,16 +14,16 @@ class TransactionCreate(BaseModel):
     type: TransactionType
     amount: float = Field(..., gt=0)
     date: datetime.date
-    category: str
-    description: str | None = None
+    category: str = Field(max_length=100)
+    description: str | None = Field(default=None, max_length=500)
 
 
 class TransactionUpdate(BaseModel):
     type: TransactionType | None = None
     amount: float | None = Field(default=None, gt=0)
     date: datetime.date | None = None
-    category: str | None = None
-    description: str | None = None
+    category: str | None = Field(default=None, max_length=100)
+    description: str | None = Field(default=None, max_length=500)
 
 
 class TransactionResponse(BaseModel):

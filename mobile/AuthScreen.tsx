@@ -28,6 +28,15 @@ export default function AuthScreen({ onAuth }: Props) {
       Alert.alert('Error', 'Ingresa email y contrasena.');
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert('Error', 'Ingresa un email valido.');
+      return;
+    }
+    if (!isLogin && password.length < 8) {
+      Alert.alert('Error', 'La contrasena debe tener al menos 8 caracteres.');
+      return;
+    }
     if (!isLogin && !name.trim()) {
       Alert.alert('Error', 'Ingresa tu nombre.');
       return;
@@ -61,7 +70,7 @@ export default function AuthScreen({ onAuth }: Props) {
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.detail || JSON.stringify(err));
+        throw new Error(err.detail || 'Error de autenticacion');
       }
 
       const data = await response.json();
