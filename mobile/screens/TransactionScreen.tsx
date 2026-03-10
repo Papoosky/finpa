@@ -155,22 +155,25 @@ export default function TransactionScreen() {
         </Text>
         <View style={styles.amountRow}>
           <Text style={[styles.currencySymbol, { color: accentColor }]}>$</Text>
-          <Input
-            placeholder="0"
-            keyboardType="number-pad"
-            value={rawAmount ? formatCLP(rawAmount) : ''}
-            onChangeText={(t) => setRawAmount(t.replace(/\D/g, ''))}
-            style={[
-              styles.amountInput,
-              {
-                borderColor: accentColor,
-                borderBottomWidth: 2,
-                borderWidth: 0,
-                borderRadius: 0,
-                backgroundColor: 'transparent',
-              },
-            ]}
-          />
+          <View style={{ flex: 1 }}>
+            <Input
+              placeholder="0"
+              keyboardType="number-pad"
+              value={rawAmount ? formatCLP(rawAmount) : ''}
+              onChangeText={(t) => setRawAmount(t.replace(/\D/g, ''))}
+              style={[
+                styles.amountInput,
+                {
+                  borderColor: accentColor,
+                  borderBottomWidth: 2,
+                  borderWidth: 0,
+                  borderRadius: 0,
+                  backgroundColor: 'transparent',
+                  paddingVertical: 12,
+                },
+              ]}
+            />
+          </View>
         </View>
 
         {/* Date */}
@@ -260,10 +263,14 @@ const useStyles = createStyles((theme) => ({
   amountRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
+  },
+  currencySymbol: {
+    fontSize: 28,
+    fontWeight: '700' as const,
+    marginRight: theme.spacing.sm,
     marginBottom: theme.spacing.xl,
   },
-  currencySymbol: { fontSize: 28, fontWeight: '700' as const, marginRight: theme.spacing.sm },
-  amountInput: { flex: 1, fontSize: 28, fontWeight: '700' as const },
+  amountInput: { flex: 1, fontSize: 28, fontWeight: '700' as const, minHeight: 48 },
   fieldButton: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.sm,
