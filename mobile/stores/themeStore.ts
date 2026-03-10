@@ -24,11 +24,17 @@ export const useThemeStore = create<ThemeState>()(
     (set, get) => ({
       mode: 'dark',
       isDark: true,
-      setMode: (mode) => set({ mode, isDark: resolveIsDark(mode) }),
+      setMode: (mode) => {
+        const isDark = resolveIsDark(mode);
+        Appearance.setColorScheme(isDark ? 'dark' : 'light');
+        set({ mode, isDark });
+      },
       toggleTheme: () => {
         const current = get().mode;
         const next = current === 'dark' ? 'light' : 'dark';
-        set({ mode: next, isDark: resolveIsDark(next) });
+        const isDark = resolveIsDark(next);
+        Appearance.setColorScheme(isDark ? 'dark' : 'light');
+        set({ mode: next, isDark });
       },
     }),
     {
@@ -38,6 +44,7 @@ export const useThemeStore = create<ThemeState>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.isDark = resolveIsDark(state.mode);
+          Appearance.setColorScheme(state.isDark ? 'dark' : 'light');
         }
       },
     },

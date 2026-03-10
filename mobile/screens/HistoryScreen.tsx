@@ -144,7 +144,7 @@ export default function HistoryScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.accent}
+              tintColor={colors.textPrimary}
             />
           }
         />

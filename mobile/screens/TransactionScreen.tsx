@@ -25,7 +25,7 @@ function formatCLP(value: string): string {
 }
 
 export default function TransactionScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useStyles();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<DrawerParamList, 'Transaction'>>();
@@ -185,6 +185,7 @@ export default function TransactionScreen() {
             value={date}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            themeVariant={isDark ? 'dark' : 'light'}
             onChange={(_: DateTimePickerEvent, selected?: Date) => {
               setShowDatePicker(Platform.OS === 'ios');
               if (selected) setDate(selected);

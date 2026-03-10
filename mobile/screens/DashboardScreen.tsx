@@ -72,7 +72,7 @@ export default function DashboardScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor={colors.accent}
+          tintColor={colors.textPrimary}
         />
       }
     >
