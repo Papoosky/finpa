@@ -68,7 +68,7 @@ export function useDashboard(transactions: Transaction[], viewMode: 'month' | 'y
     const monthlyIncome = new Array(12).fill(0) as number[];
     const monthlyExpense = new Array(12).fill(0) as number[];
     for (const t of transactions) {
-      const m = new Date(t.date).getMonth();
+      const m = new Date(t.date + 'T12:00:00').getMonth();
       if (t.type === 'income') monthlyIncome[m] += t.amount;
       else monthlyExpense[m] += t.amount;
     }

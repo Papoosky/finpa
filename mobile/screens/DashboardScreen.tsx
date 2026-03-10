@@ -197,8 +197,9 @@ export default function DashboardScreen() {
                 colorScale={dashboard.pieData.colors}
                 labels={({ datum }: { datum: { x: string } }) => datum.x}
                 style={{ labels: { fontSize: 11, fill: colors.textSecondary } }}
-                width={300}
-                height={300}
+                width={350}
+                height={350}
+                padding={70}
               />
               <View style={styles.pieLegend}>
                 {dashboard.pieData.legend.map((item) => (
