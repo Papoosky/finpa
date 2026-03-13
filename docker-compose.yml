@@ -20,6 +20,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: finpa-backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
     depends_on:
@@ -46,6 +47,7 @@ services:
       context: ./mobile
       dockerfile: Dockerfile
     container_name: finpa-mobile
+    restart: unless-stopped
     ports:
       - "8081:8081"
       - "19000:19000"
