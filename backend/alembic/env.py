@@ -1,5 +1,4 @@
 import asyncio
-import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -11,7 +10,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
-from app.database import Base
+from app.database import DATABASE_URL, Base, _connect_args
 from app.models import Transaction, User  # noqa: F401 — ensure models are registered
 
 config = context.config
@@ -21,8 +20,8 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# Allow DATABASE_URL env var to override alembic.ini
-db_url = os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+# Reuse the cleaned URL and SSL config from app.database
+db_url = DATABASE_URL
 
 
 def run_migrations_offline() -> None:
@@ -43,7 +42,9 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    connectable = create_async_engine(db_url, poolclass=pool.NullPool)  # ty: ignore[invalid-argument-type]  # db_url fallback is handled by alembic.ini
+    connectable = create_async_engine(
+        db_url, poolclass=pool.NullPool, connect_args=_connect_args
+    )  # ty: ignore[invalid-argument-type]
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

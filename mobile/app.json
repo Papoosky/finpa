@@ -14,6 +14,18 @@
         "backgroundColor": "#ffffff"
       }
     },
-    "plugins": ["expo-secure-store"]
+    "plugins": ["expo-secure-store"],
+    "extra": {
+      "eas": {
+        "projectId": "daf5aab9-9cd9-487c-854e-7de27d1d0da5"
+      }
+    },
+    "owner": "papoosky",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/daf5aab9-9cd9-487c-854e-7de27d1d0da5"
+    }
   }
 }
