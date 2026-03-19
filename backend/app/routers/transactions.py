@@ -1,6 +1,8 @@
 import datetime
+import uuid as _uuid
 from uuid import UUID
 
+from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -24,7 +26,9 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
-@router.post("/", response_model=TransactionResponse, status_code=201)
+@router.post(
+    "/", response_model=TransactionResponse | list[TransactionResponse], status_code=201
+)
 @limiter.limit("60/minute")
 async def create_transaction(
     request: Request,
@@ -32,24 +36,61 @@ async def create_transaction(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    txn = Transaction(
-        user_id=user.id,
-        type=body.type,
-        amount=body.amount,
-        date=body.date,
-        category=body.category,
-        description=body.description,
-    )
-    db.add(txn)
+    if body.installments is None:
+        txn = Transaction(
+            user_id=user.id,
+            type=body.type,
+            amount=body.amount,
+            date=body.date,
+            category=body.category,
+            description=body.description,
+        )
+        db.add(txn)
+        await db.commit()
+        await db.refresh(txn)
+
+        if user.sync_to_sheets:
+            sheet = get_sheet_service()
+            if sheet:
+                sheet.add_transaction(txn)
+
+        return txn
+
+    # Installment creation
+    n = body.installments
+    group_id = _uuid.uuid4()
+    base_amount = round(body.amount / n, 2)
+    remainder = round(body.amount - base_amount * (n - 1), 2)
+
+    transactions: list[Transaction] = []
+    for i in range(n):
+        txn_date = body.date + relativedelta(months=i)
+        amount = remainder if i == n - 1 else base_amount
+        txn = Transaction(
+            user_id=user.id,
+            type=body.type,
+            amount=amount,
+            date=txn_date,
+            category=body.category,
+            description=body.description,
+            installment_total=n,
+            installment_number=i + 1,
+            installment_group=group_id,
+        )
+        db.add(txn)
+        transactions.append(txn)
+
     await db.commit()
-    await db.refresh(txn)
+    for txn in transactions:
+        await db.refresh(txn)
 
     if user.sync_to_sheets:
         sheet = get_sheet_service()
         if sheet:
-            sheet.add_transaction(txn)
+            for txn in transactions:
+                sheet.add_transaction(txn)
 
-    return txn
+    return transactions
 
 
 @router.get("/", response_model=PaginatedTransactions)
@@ -89,6 +130,29 @@ async def list_transactions(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/installment-group/{group_uuid}", response_model=list[TransactionResponse])
+@limiter.limit("60/minute")
+async def get_installment_group(
+    request: Request,
+    group_uuid: UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = (
+        select(Transaction)
+        .where(
+            Transaction.installment_group == group_uuid,
+            Transaction.user_id == user.id,
+        )
+        .order_by(Transaction.installment_number)
+    )
+    result = await db.execute(stmt)
+    txns = result.scalars().all()
+    if not txns:
+        raise HTTPException(status_code=404, detail="Grupo de cuotas no encontrado")
+    return txns
 
 
 @router.get("/{transaction_uuid}", response_model=TransactionResponse)
