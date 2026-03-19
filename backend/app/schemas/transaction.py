@@ -16,6 +16,7 @@ class TransactionCreate(BaseModel):
     date: datetime.date
     category: str = Field(max_length=100)
     description: str | None = Field(default=None, max_length=500)
+    installments: int | None = Field(default=None, ge=2, le=48)
 
 
 class TransactionUpdate(BaseModel):
@@ -33,6 +34,9 @@ class TransactionResponse(BaseModel):
     date: datetime.date
     category: str
     description: str | None
+    installment_total: int | None
+    installment_number: int | None
+    installment_group: UUID | None
 
     model_config = {"from_attributes": True}
 
