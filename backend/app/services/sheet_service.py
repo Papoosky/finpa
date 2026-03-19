@@ -6,7 +6,7 @@ import gspread
 
 logger = logging.getLogger(__name__)
 
-HEADERS = ["ID", "Tipo", "Fecha", "Monto", "Categoria", "Descripcion"]
+HEADERS = ["ID", "Tipo", "Fecha", "Monto", "Categoria", "Descripcion", "Cuota", "Grupo"]
 
 _sheet_service: Optional["SheetService"] = None
 
@@ -29,6 +29,10 @@ class SheetService:
             self.worksheet.append_row(HEADERS)
 
     def add_transaction(self, txn) -> None:
+        installment_label = ""
+        if txn.installment_total:
+            installment_label = f"{txn.installment_number}/{txn.installment_total}"
+
         row = [
             str(txn.uuid),
             txn.type,
@@ -36,6 +40,8 @@ class SheetService:
             txn.amount,
             txn.category,
             txn.description or "",
+            installment_label,
+            str(txn.installment_group) if txn.installment_group else "",
         ]
         self.worksheet.append_row(row)
 
