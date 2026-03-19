@@ -9,7 +9,7 @@ import { CategoryModal } from '../components/CategoryModal';
 import { useTransactions } from '../hooks/useTransactions';
 import { useHaptics } from '../hooks/useHaptics';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../constants/categories';
-import { TransactionType, DrawerParamList } from '../types';
+import { TransactionFormData, TransactionType, DrawerParamList } from '../types';
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();
@@ -47,6 +47,8 @@ export default function TransactionScreen() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [description, setDescription] = useState(editTransaction?.description ?? '');
   const [loading, setLoading] = useState(false);
+  const [installmentsEnabled, setInstallmentsEnabled] = useState(false);
+  const [installments, setInstallments] = useState('3');
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -70,6 +72,9 @@ export default function TransactionScreen() {
     setType(newType);
     const cats = newType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
     if (!cats.find((c) => c.label === category)) setCategory(cats[0].label);
+    if (newType === 'income') {
+      setInstallmentsEnabled(false);
+    }
   }
 
   async function handleSubmit() {
@@ -80,12 +85,15 @@ export default function TransactionScreen() {
     }
 
     setLoading(true);
-    const formData = {
+    const formData: TransactionFormData = {
       type,
       amount,
       date: formatDate(date),
       category,
       description: description.trim() || null,
+      ...(installmentsEnabled && parseInt(installments, 10) >= 2
+        ? { installments: parseInt(installments, 10) }
+        : {}),
     };
 
     let success: boolean;
@@ -221,6 +229,84 @@ export default function TransactionScreen() {
           onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
         />
 
+        {/* Installments (expenses only, new transactions only) */}
+        {!isIncome && !isEditing && (
+          <View style={styles.installmentSection}>
+            <TouchableOpacity
+              style={styles.installmentToggle}
+              onPress={() => {
+                haptics.light();
+                setInstallmentsEnabled(!installmentsEnabled);
+              }}
+            >
+              <Text variant="bodyMedium" style={{ fontWeight: '600' }}>
+                Pago en cuotas
+              </Text>
+              <View
+                style={[
+                  styles.toggleIndicator,
+                  { backgroundColor: installmentsEnabled ? accentColor : colors.border },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      backgroundColor: '#fff',
+                      transform: [{ translateX: installmentsEnabled ? 16 : 2 }],
+                    },
+                  ]}
+                />
+              </View>
+            </TouchableOpacity>
+
+            {installmentsEnabled && (
+              <View style={styles.installmentInput}>
+                <Text variant="caption" color="textSecondary" style={styles.label}>
+                  Numero de cuotas
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <TouchableOpacity
+                    style={[styles.stepperBtn, { borderColor: colors.border }]}
+                    onPress={() => {
+                      const n = Math.max(2, parseInt(installments, 10) - 1);
+                      setInstallments(String(n));
+                    }}
+                  >
+                    <Text variant="titleMedium">-</Text>
+                  </TouchableOpacity>
+                  <Input
+                    value={installments}
+                    onChangeText={(t) => {
+                      const n = t.replace(/\D/g, '');
+                      setInstallments(n);
+                    }}
+                    keyboardType="number-pad"
+                    style={{ width: 60, textAlign: 'center', fontSize: 20, fontWeight: '700' }}
+                  />
+                  <TouchableOpacity
+                    style={[styles.stepperBtn, { borderColor: colors.border }]}
+                    onPress={() => {
+                      const n = Math.min(48, parseInt(installments, 10) + 1);
+                      setInstallments(String(n));
+                    }}
+                  >
+                    <Text variant="titleMedium">+</Text>
+                  </TouchableOpacity>
+                </View>
+                {rawAmount && parseInt(installments, 10) >= 2 && (
+                  <Text variant="caption" color="textSecondary" style={{ marginTop: 8 }}>
+                    {parseInt(installments, 10)} cuotas de $
+                    {formatCLP(
+                      String(Math.round(parseInt(rawAmount, 10) / parseInt(installments, 10))),
+                    )}
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
         <Button
           label={loading ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Guardar'}
           onPress={handleSubmit}
@@ -282,5 +368,36 @@ const useStyles = createStyles((theme) => ({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
+  },
+  installmentSection: {
+    marginBottom: theme.spacing.xl,
+  },
+  installmentToggle: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingVertical: theme.spacing.md,
+  },
+  toggleIndicator: {
+    width: 44,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center' as const,
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  installmentInput: {
+    marginTop: theme.spacing.sm,
+  },
+  stepperBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radii.sm,
+    borderWidth: 1.5,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
 }));
