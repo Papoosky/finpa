@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer } from '@react-navigation/native';
 import {
   createDrawerNavigator,
@@ -42,7 +43,11 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 8 }}
           onPress={toggleTheme}
         >
-          <Text variant="bodyLarge">{isDark ? '☀️' : '🌙'}</Text>
+          <Ionicons
+            name={isDark ? 'sunny-outline' : 'moon-outline'}
+            size={20}
+            color={colors.textSecondary}
+          />
           <Text variant="bodyMedium" color="textSecondary">
             {isDark ? 'Modo claro' : 'Modo oscuro'}
           </Text>
@@ -80,17 +85,35 @@ function AppNavigator() {
           <Drawer.Screen
             name="Dashboard"
             component={DashboardScreen}
-            options={{ drawerLabel: '📊 Dashboard', title: 'Dashboard' }}
+            options={{
+              drawerLabel: 'Dashboard',
+              title: 'Dashboard',
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="stats-chart-outline" size={size} color={color} />
+              ),
+            }}
           />
           <Drawer.Screen
             name="Transaction"
             component={TransactionScreen}
-            options={{ drawerLabel: '💸 Nueva transaccion', title: 'Nueva transaccion' }}
+            options={{
+              drawerLabel: 'Nueva transaccion',
+              title: 'Nueva transaccion',
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="add-circle-outline" size={size} color={color} />
+              ),
+            }}
           />
           <Drawer.Screen
             name="History"
             component={HistoryScreen}
-            options={{ drawerLabel: '📋 Historial', title: 'Historial' }}
+            options={{
+              drawerLabel: 'Historial',
+              title: 'Historial',
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="list-outline" size={size} color={color} />
+              ),
+            }}
           />
         </Drawer.Navigator>
       </NavigationContainer>
