@@ -121,17 +121,27 @@ export function TransactionRow({ item, onEdit, onDelete }: Props) {
               ) : null}
             </View>
           </View>
-          <Text
-            variant="bodyLarge"
-            style={{
-              fontWeight: '700',
-              fontVariant: ['tabular-nums'],
-              color: item.type === 'income' ? colors.income : colors.expense,
-            }}
-          >
-            {item.type === 'income' ? '+' : '-'}
-            {formatAmount(item.amount)}
-          </Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text
+              variant="bodyLarge"
+              style={{
+                fontWeight: '700',
+                fontVariant: ['tabular-nums'],
+                color: item.type === 'income' ? colors.income : colors.expense,
+              }}
+            >
+              {item.type === 'income' ? '+' : '-'}
+              {formatAmount(item.amount)}
+            </Text>
+            {item.installment_total && (
+              <Text
+                variant="caption"
+                style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}
+              >
+                Cuota {item.installment_number}/{item.installment_total}
+              </Text>
+            )}
+          </View>
         </View>
       </Animated.View>
     </View>
