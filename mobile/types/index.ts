@@ -7,6 +7,9 @@ export type Transaction = {
   date: string;
   category: string;
   description: string | null;
+  installment_total: number | null;
+  installment_number: number | null;
+  installment_group: string | null;
 };
 
 export type TransactionFormData = {
@@ -15,6 +18,7 @@ export type TransactionFormData = {
   date: string;
   category: string;
   description: string | null;
+  installments?: number | null;
 };
 
 export type DrawerParamList = {

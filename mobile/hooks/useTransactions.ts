@@ -37,12 +37,12 @@ export function useTransactions() {
 
   const create = useCallback(async (data: TransactionFormData): Promise<boolean> => {
     try {
-      await api.transactions.create(data);
-      showToast(
-        'success',
-        'Guardado',
-        `${data.type === 'income' ? 'Ingreso' : 'Gasto'} registrado.`,
-      );
+      const result = await api.transactions.create(data);
+      const count = Array.isArray(result) ? result.length : 1;
+      const typeLabel = data.type === 'income' ? 'Ingreso' : 'Gasto';
+      const message =
+        count > 1 ? `${typeLabel} registrado en ${count} cuotas.` : `${typeLabel} registrado.`;
+      showToast('success', 'Guardado', message);
       return true;
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return false;

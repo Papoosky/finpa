@@ -112,11 +112,14 @@ export const api = {
       }),
 
     create: (data: TransactionFormData) =>
-      request<Transaction>('/transactions/', {
+      request<Transaction | Transaction[]>('/transactions/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }),
+
+    getInstallmentGroup: (groupUuid: string) =>
+      request<Transaction[]>(`/transactions/installment-group/${groupUuid}`),
 
     update: (uuid: string, data: Partial<TransactionFormData>) =>
       request<Transaction>(`/transactions/${uuid}`, {
