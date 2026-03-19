@@ -19,6 +19,7 @@ class Transaction(Base):
         Index("ix_transactions_user_date", "user_id", "date"),
         Index("ix_transactions_user_type", "user_id", "type"),
         Index("ix_transactions_user_category", "user_id", "category"),
+        Index("ix_transactions_installment_group", "installment_group"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -31,5 +32,8 @@ class Transaction(Base):
     date: Mapped[datetime.date] = mapped_column(Date, index=True)
     category: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    installment_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    installment_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    installment_group: Mapped[_uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
     user: Mapped[User] = relationship(back_populates="transactions")
