@@ -97,6 +97,7 @@ function AppNavigator() {
             name="Transaction"
             component={TransactionScreen}
             options={{
+              unmountOnBlur: true,
               drawerLabel: 'Nueva transaccion',
               title: 'Nueva transaccion',
               drawerIcon: ({ color, size }) => (
