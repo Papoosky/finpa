@@ -58,6 +58,14 @@ export default function TransactionScreen() {
       setDate(new Date(editTransaction.date + 'T12:00:00'));
       setCategory(editTransaction.category);
       setDescription(editTransaction.description ?? '');
+    } else {
+      setType('expense');
+      setRawAmount('');
+      setDate(new Date());
+      setCategory(EXPENSE_CATEGORIES[0].label);
+      setDescription('');
+      setInstallmentsEnabled(false);
+      setInstallments('3');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editTransaction?.uuid]);
@@ -111,6 +119,10 @@ export default function TransactionScreen() {
         setRawAmount('');
         setDescription('');
         setDate(new Date());
+        const cats = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+        setCategory(cats[0].label);
+        setInstallmentsEnabled(false);
+        setInstallments('3');
       }
     }
   }
