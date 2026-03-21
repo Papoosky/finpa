@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `backend/` — FastAPI app with PostgreSQL (primary) and optional Google Sheets sync
 - `mobile/` — Expo (React Native) app with a transaction form, runs on iPhone via Expo Go
 
-Both are containerized and run together via Docker Compose. The intended deployment target is a Proxmox home server (LXC or VM).
+Both are containerized and run together via Docker Compose for local development. Production deployment uses Google Cloud Run (backend) and EAS Update (mobile).
 
 ## Running the project
 
@@ -56,10 +56,12 @@ EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
 - The Dockerfile uses `ghcr.io/astral-sh/uv:trixie` as base image
 
 ### Mobile
-- Single screen: `App.tsx` — form with type toggle, amount, date, category, description
+- `App.tsx` — navigation setup (drawer with Dashboard, Transaction, History screens)
+- `screens/TransactionScreen.tsx` — form with type toggle, amount, date, category, description
 - `config.ts` — reads `EXPO_PUBLIC_API_URL` env var (baked in at Metro bundle time)
-- Categories are hardcoded in `App.tsx`, split by transaction type
+- `constants/categories.ts` — expense and income categories with emoji mappings
 - Expo SDK 54, `--legacy-peer-deps` required for npm install
+- EAS configured for OTA updates (`eas update --branch production`)
 
 ### Docker Compose
 - `db` service: PostgreSQL 16 with persistent volume (`pgdata`)
@@ -106,6 +108,28 @@ EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
 - Backend: uvicorn runs with `--reload` — edit files in `backend/app/` and changes are picked up automatically
 - Mobile: source code is volume-mounted — Expo Fast Refresh picks up changes without container rebuild
 - New npm/pip deps still require `docker compose build <service>`
+
+## CI/CD
+
+### CI (`.github/workflows/ci.yml`)
+- Runs on PRs to `main` and `develop`
+- **Backend lint job**: ruff check, ruff format --check, ty check
+- **Mobile lint job**: eslint, prettier
+
+### CD (`.github/workflows/cd.yml`)
+- Runs on push to `main` (i.e., after merging a PR)
+- Uses `dorny/paths-filter` to detect which directories changed
+- **Backend deploy** (if `backend/**` changed): deploys to Google Cloud Run via `gcloud run deploy`. Alembic migrations run automatically on container startup (Dockerfile CMD)
+- **Mobile deploy** (if `mobile/**` changed): runs `eas update --branch production` to push an OTA update
+
+### Required GitHub Secrets
+| Secret | Description |
+|---|---|
+| `GCP_SA_KEY` | Google Cloud service account JSON key (needs Cloud Run Admin + Storage Admin roles) |
+| `DATABASE_URL` | Neon PostgreSQL connection string (`postgresql+asyncpg://...`) |
+| `SECRET_KEY` | Fixed JWT signing key (generate once with `openssl rand -hex 32`) |
+| `ADMIN_SECRET` | Fixed admin secret (generate once with `openssl rand -hex 24`) |
+| `EXPO_TOKEN` | Expo access token for EAS CLI (generate with `npx eas-cli login` then `expo token:create`) |
 
 ## Key conventions
 - All DB models use `id` (integer PK, internal) and `uuid` (exposed to API/clients). Joins and FKs use `id`; API responses and URL params use `uuid`
