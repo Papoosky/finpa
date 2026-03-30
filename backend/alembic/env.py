@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from app.database import DATABASE_URL, Base, _connect_args
-from app.models import Transaction, User  # noqa: F401 — ensure models are registered
+from app.models import (  # noqa: F401 — ensure models are registered
+    Subscription,
+    Transaction,
+    User,
+)
 
 config = context.config
 
