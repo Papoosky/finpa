@@ -1,6 +1,8 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, AppState, AppStateStatus, TouchableOpacity, View } from 'react-native';
+import * as Updates from 'expo-updates';
+import LogRocket from '@logrocket/react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer } from '@react-navigation/native';
 import {
@@ -203,6 +205,13 @@ function AuthGate() {
 }
 
 export default function App() {
+  useEffect(() => {
+    LogRocket.init('q8qrsz/finpa', {
+      updateId: Updates.isEmbeddedLaunch ? null : Updates.updateId,
+      expoChannel: Updates.channel,
+    });
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthGate />
