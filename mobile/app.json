@@ -14,18 +14,7 @@
         "backgroundColor": "#ffffff"
       }
     },
-    "plugins": [
-      "expo-secure-store",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 25
-          }
-        }
-      ],
-      "@logrocket/react-native"
-    ],
+    "plugins": ["expo-secure-store"],
     "extra": {
       "eas": {
         "projectId": "daf5aab9-9cd9-487c-854e-7de27d1d0da5"
