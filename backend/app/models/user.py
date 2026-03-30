@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
+    from app.models.subscription import Subscription
     from app.models.transaction import Transaction
 
 
@@ -25,3 +26,6 @@ class User(Base):
     sync_to_sheets: Mapped[bool] = mapped_column(Boolean, default=False)
 
     transactions: Mapped[list[Transaction]] = relationship(back_populates="user")
+    subscriptions: Mapped[list[Subscription]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )

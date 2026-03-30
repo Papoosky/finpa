@@ -1,27 +1,28 @@
 import React, { useCallback, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Text } from './ui';
+import { ServiceBadge } from './ServiceBadge';
 import { useTheme } from '../theme/ThemeProvider';
 import { useHaptics } from '../hooks/useHaptics';
-import { CATEGORY_EMOJI_MAP } from '../constants/categories';
-import { Transaction } from '../types';
+import { Subscription } from '../types';
 import { formatAmount } from '../hooks/useDashboard';
 
 const SWIPE_THRESHOLD = 80;
 
 type Props = {
-  item: Transaction;
-  onEdit: (t: Transaction) => void;
-  onDelete: (t: Transaction) => void;
+  item: Subscription;
+  nextChargeLabel: string;
+  daysLabel: string;
+  onEdit: (s: Subscription) => void;
+  onDelete: (s: Subscription) => void;
 };
 
-export function TransactionRow({ item, onEdit, onDelete }: Props) {
+export function SubscriptionRow({ item, nextChargeLabel, daysLabel, onEdit, onDelete }: Props) {
   const { colors, radii } = useTheme();
   const haptics = useHaptics();
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
-  const onTouchStart = useRef({ x: 0, y: 0, time: 0 }).current;
+  const onTouchStart = useRef({ x: 0, y: 0 }).current;
   const isTracking = useRef(false);
   const isHorizontal = useRef<boolean | null>(null);
 
@@ -34,6 +35,9 @@ export function TransactionRow({ item, onEdit, onDelete }: Props) {
     }).start();
     lastOffset.current = 0;
   }, [translateX]);
+
+  const amountLabel =
+    item.currency === 'USD' ? `USD ${item.amount.toFixed(2)}` : `$${formatAmount(item.amount)}`;
 
   return (
     <View style={[styles.container, { borderRadius: radii.sm }]}>
@@ -64,7 +68,6 @@ export function TransactionRow({ item, onEdit, onDelete }: Props) {
         onTouchStart={(e) => {
           onTouchStart.x = e.nativeEvent.pageX;
           onTouchStart.y = e.nativeEvent.pageY;
-          onTouchStart.time = Date.now();
           isTracking.current = true;
           isHorizontal.current = null;
         }}
@@ -105,48 +108,26 @@ export function TransactionRow({ item, onEdit, onDelete }: Props) {
       >
         <View style={styles.content}>
           <View style={styles.left}>
-            <Text style={styles.emoji}>{CATEGORY_EMOJI_MAP[item.category] || '📌'}</Text>
+            <ServiceBadge serviceKey={item.service_key} size={38} />
             <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text variant="bodyMedium" style={{ fontWeight: '600', color: colors.textPrimary }}>
-                  {item.category}
-                </Text>
-                {item.subscription_uuid ? (
-                  <Ionicons name="repeat-outline" size={13} color={colors.textMuted} />
-                ) : null}
-              </View>
-              {item.description ? (
-                <Text
-                  variant="caption"
-                  color="textMuted"
-                  numberOfLines={1}
-                  style={{ maxWidth: 180 }}
-                >
-                  {item.description}
-                </Text>
-              ) : null}
+              <Text variant="bodyMedium" style={{ fontWeight: '600', color: colors.textPrimary }}>
+                {item.name}
+              </Text>
+              <Text variant="caption" color="textMuted">
+                {nextChargeLabel} · {daysLabel}
+              </Text>
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text
               variant="bodyLarge"
-              style={{
-                fontWeight: '700',
-                fontVariant: ['tabular-nums'],
-                color: item.type === 'income' ? colors.income : colors.expense,
-              }}
+              style={{ fontWeight: '700', fontVariant: ['tabular-nums'], color: colors.expense }}
             >
-              {item.type === 'income' ? '+' : '-'}
-              {formatAmount(item.amount)}
+              {amountLabel}
             </Text>
-            {item.installment_total && (
-              <Text
-                variant="caption"
-                style={{ color: colors.textMuted, fontSize: 11, marginTop: 2 }}
-              >
-                Cuota {item.installment_number}/{item.installment_total}
-              </Text>
-            )}
+            <Text variant="caption" color="textMuted" style={{ fontSize: 11, marginTop: 2 }}>
+              {item.interval === 'monthly' ? 'mensual' : 'anual'}
+            </Text>
           </View>
         </View>
       </Animated.View>
@@ -173,5 +154,4 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  emoji: { fontSize: 24 },
 });

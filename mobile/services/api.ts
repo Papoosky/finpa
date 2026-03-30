@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../stores/authStore';
-import { Transaction, TransactionFormData } from '../types';
+import { Subscription, SubscriptionFormData, Transaction, TransactionFormData } from '../types';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -129,6 +129,28 @@ export const api = {
       }),
 
     delete: (uuid: string) => request<void>(`/transactions/${uuid}`, { method: 'DELETE' }),
+  },
+
+  subscriptions: {
+    list: () => request<Subscription[]>('/subscriptions/'),
+
+    create: (data: SubscriptionFormData) =>
+      request<Subscription>('/subscriptions/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+
+    update: (uuid: string, data: Partial<SubscriptionFormData>) =>
+      request<Subscription>(`/subscriptions/${uuid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+
+    delete: (uuid: string) => request<void>(`/subscriptions/${uuid}`, { method: 'DELETE' }),
+
+    processDue: () => request<Transaction[]>('/subscriptions/process-due', { method: 'POST' }),
   },
 };
 

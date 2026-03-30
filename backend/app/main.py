@@ -9,7 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.database import Base, engine
-from app.routers import auth, transactions
+from app.routers import auth, subscriptions, transactions
 from app.services.sheet_service import init_sheet_service
 
 limiter = Limiter(key_func=get_remote_address)
@@ -63,6 +63,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 app.include_router(auth.router)
 app.include_router(auth.admin_router)
 app.include_router(transactions.router)
+app.include_router(subscriptions.router)
 
 
 @app.get("/")

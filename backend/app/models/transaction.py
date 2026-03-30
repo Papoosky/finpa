@@ -35,5 +35,8 @@ class Transaction(Base):
     installment_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
     installment_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     installment_group: Mapped[_uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    subscription_uuid: Mapped[_uuid.UUID | None] = mapped_column(
+        Uuid, nullable=True, index=True
+    )
 
     user: Mapped[User] = relationship(back_populates="transactions")

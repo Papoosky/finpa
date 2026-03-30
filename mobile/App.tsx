@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
-import React, { useEffect } from 'react';
-import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { ActivityIndicator, AppState, AppStateStatus, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NavigationContainer } from '@react-navigation/native';
 import {
@@ -15,10 +15,13 @@ import { ThemeProvider, useTheme } from './theme/ThemeProvider';
 import { useAuthStore } from './stores/authStore';
 import { useThemeStore } from './stores/themeStore';
 import { Text, toastConfig } from './components/ui';
+import { api } from './services/api';
 import AuthScreen from './screens/AuthScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import TransactionScreen from './screens/TransactionScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import SubscriptionsScreen from './screens/SubscriptionsScreen';
+import AddSubscriptionScreen from './screens/AddSubscriptionScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -64,6 +67,23 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 
 function AppNavigator() {
   const { colors, isDark } = useTheme();
+  const token = useAuthStore((s) => s.token);
+  const appState = useRef<AppStateStatus>(AppState.currentState);
+
+  // Process due subscriptions when app comes to foreground
+  useEffect(() => {
+    if (!token) return;
+    // Run once on mount
+    api.subscriptions.processDue().catch(() => {});
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        api.subscriptions.processDue().catch(() => {});
+      }
+      appState.current = nextState;
+    });
+    return () => subscription.remove();
+  }, [token]);
 
   return (
     <>
@@ -115,6 +135,28 @@ function AppNavigator() {
                 <Ionicons name="list-outline" size={size} color={color} />
               ),
             }}
+          />
+          <Drawer.Screen
+            name="Subscriptions"
+            component={SubscriptionsScreen}
+            options={{
+              drawerLabel: 'Suscripciones',
+              title: 'Suscripciones',
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="repeat-outline" size={size} color={color} />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="AddSubscription"
+            component={AddSubscriptionScreen}
+            options={({ route }) => ({
+              unmountOnBlur: true,
+              drawerItemStyle: { display: 'none' },
+              title: (route.params as { subscription?: unknown })?.subscription
+                ? 'Editar suscripcion'
+                : 'Nueva suscripcion',
+            })}
           />
         </Drawer.Navigator>
       </NavigationContainer>

@@ -37,6 +37,7 @@ class TransactionResponse(BaseModel):
     installment_total: int | None
     installment_number: int | None
     installment_group: UUID | None
+    subscription_uuid: UUID | None = None
 
     model_config = {"from_attributes": True}
 

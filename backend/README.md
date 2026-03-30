@@ -1,74 +1,113 @@
 # Finpa Backend
 
-API para registrar y gestionar transacciones financieras personales. Construida con **FastAPI** y conectada a **Google Sheets** como almacenamiento.
+REST API for a personal finance tracker. Built with **FastAPI**, async **SQLAlchemy**, **PostgreSQL** (NeonDB in production), and optional **Google Sheets** sync.
 
 ## Stack
 
-- **FastAPI** — Framework web
-- **Pydantic** — Validación de datos
-- **gspread** — Integración con Google Sheets
-- **uv** — Gestión de dependencias
-- **Docker** — Contenedorización
+- **FastAPI** — web framework
+- **SQLAlchemy 2 (async)** — ORM with asyncpg driver
+- **Alembic** — database migrations
+- **PostgreSQL 16** — primary storage (NeonDB in production, local container in dev)
+- **python-jose + passlib/bcrypt** — JWT authentication
+- **gspread** — optional Google Sheets sync
+- **uv** — dependency management (Python 3.12+)
+- **Ruff + ty** — linting, formatting, and type checking
 
-## Estructura
+## Structure
 
 ```
 backend/
 ├── app/
-│   ├── main.py              # Endpoints de la API
+│   ├── main.py              # FastAPI app entry point, lifespan, router includes
+│   ├── database.py          # Async SQLAlchemy engine, session factory, Base
+│   ├── auth.py              # JWT logic, get_current_user dependency
 │   ├── models/
-│   │   └── transaction.py   # Schemas Pydantic
+│   │   ├── user.py          # User model (id + uuid)
+│   │   └── transaction.py   # Transaction model (id + uuid)
+│   ├── schemas/             # Pydantic request/response schemas
+│   ├── routers/
+│   │   ├── auth.py          # POST /auth/register, POST /auth/login
+│   │   └── transactions.py  # Full CRUD under /transactions/
 │   └── services/
-│       └── sheet_service.py  # Integración con Google Sheets
-├── credentials.json          # Credenciales de servicio (no versionado)
+│       └── sheet_service.py # Optional Google Sheets sync
+├── alembic/                 # Migrations
+├── credentials.json         # GCP service account key (gitignored)
 ├── Dockerfile
 └── pyproject.toml
 ```
 
-## Endpoints
+## API Endpoints
 
-| Método | Ruta              | Descripción                    |
-|--------|--------------------|-------------------------------|
-| GET    | `/`               | Health check                   |
-| POST   | `/transactions/`  | Registrar una nueva transacción |
+| Method | Route | Description | Auth |
+|--------|-------|-------------|------|
+| GET | `/` | Health check | No |
+| POST | `/auth/register` | Register a new user | No |
+| POST | `/auth/login` | Login → returns JWT | No |
+| POST | `/transactions/` | Create a transaction | Bearer |
+| GET | `/transactions/` | List transactions (filterable) | Bearer |
+| GET | `/transactions/{uuid}` | Get a single transaction | Bearer |
+| PATCH | `/transactions/{uuid}` | Update a transaction | Bearer |
+| DELETE | `/transactions/{uuid}` | Delete a transaction | Bearer |
 
-### POST /transactions/
+Interactive docs available at `/docs` when running locally.
 
-```json
-{
-  "amount": 15000,
-  "date": "2026-03-05",
-  "category": "Comida",
-  "description": "Almuerzo"
-}
-```
+## Running locally
 
-## Ejecución
+### With Docker (recommended)
 
 ```bash
-# Desde la raíz del proyecto
+# From repo root
 docker compose up --build
 ```
 
-La API estará disponible en `http://localhost:8000`.
-Documentación interactiva en `http://localhost:8000/docs`.
+API available at `http://localhost:8000`.
 
-## Configuración
+### Standalone (against NeonDB or local Postgres)
 
-| Variable                 | Descripción                          |
-|--------------------------|--------------------------------------|
-| `GOOGLE_SHEETS_ID`       | ID del spreadsheet de Google         |
-| `GOOGLE_CREDENTIALS_PATH`| Ruta al JSON de credenciales         |
-| `ENV`                    | Entorno (`development`/`production`) |
+```bash
+uv sync
+DATABASE_URL=postgresql+asyncpg://<connection-string> uv run alembic upgrade head
+DATABASE_URL=postgresql+asyncpg://<connection-string> \
+  SECRET_KEY=<your-key> \
+  uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-## TODOs
+## Environment variables
 
-- [ ] Migrar de Google Sheets a base de datos (PostgreSQL)
-- [ ] Agregar endpoint `GET /transactions/` para listar transacciones
-- [ ] Agregar endpoint `DELETE /transactions/{id}` para eliminar transacciones
-- [ ] Agregar endpoint `PUT /transactions/{id}` para editar transacciones
-- [ ] Agregar autenticación de usuarios (JWT)
-- [ ] Agregar categorías predefinidas y validación
-- [ ] Agregar paginación y filtros (por fecha, categoría)
-- [ ] Agregar tests unitarios e integración
-- [ ] CI/CD pipeline
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | `postgresql+asyncpg://...` — NeonDB in prod, local container in dev |
+| `SECRET_KEY` | Yes | JWT signing key (`openssl rand -hex 32`) |
+| `ADMIN_SECRET` | Yes | Secret required to register new users |
+| `REGISTRATION_ENABLED` | No | `false` by default — set `true` to allow open registration |
+| `ENV` | No | `development` or `production` (default `production`) |
+| `GOOGLE_SHEETS_ID` | No | Google Sheets spreadsheet ID — sheet sync disabled if unset |
+| `GOOGLE_CREDENTIALS_PATH` | No | Path to GCP service account JSON (default `/app/credentials.json`) |
+
+## Linting & formatting
+
+```bash
+# Check
+uv run ruff check . && uv run ruff format --check . && uv run ty check .
+
+# Auto-fix
+uv run ruff check --fix . && uv run ruff format .
+```
+
+## Migrations
+
+```bash
+# Apply all pending migrations
+uv run alembic upgrade head
+
+# Create a new migration after model changes
+uv run alembic revision --autogenerate -m "describe the change"
+```
+
+## Google Sheets sync (optional)
+
+- Place a GCP service account key at `backend/credentials.json` (gitignored)
+- Set `GOOGLE_SHEETS_ID` in your `.env`
+- The target spreadsheet must have a worksheet named `transacciones`
+- Sync only runs for users with `sync_to_sheets=true` in their profile
+- Headers are auto-created on first sync if the sheet is empty
