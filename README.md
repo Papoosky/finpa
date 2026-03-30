@@ -2,6 +2,8 @@
 
 Personal finance tracker with multi-user support. Track income and expenses, visualize spending patterns, and optionally sync to Google Sheets.
 
+**Production**: Backend on Google Cloud Run + NeonDB; mobile iOS app distributed via EAS Build with OTA updates via EAS Update.
+
 ## Architecture
 
 ```
@@ -19,14 +21,15 @@ Personal finance tracker with multi-user support. Track income and expenses, vis
 |-----------|-------|
 | **Backend** | FastAPI, SQLAlchemy (async), PostgreSQL 16, Alembic, JWT auth |
 | **Mobile** | Expo SDK 54, React Native, React Navigation (Drawer), Zustand, Victory Native |
-| **Infra** | Docker Compose, uv (Python), npm |
+| **Infra (dev)** | Docker Compose, uv (Python), npm |
+| **Infra (prod)** | Google Cloud Run (backend), NeonDB (PostgreSQL), EAS Build + EAS Update (mobile) |
 
-## Quick Start
+## Quick Start (Local Dev)
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- iPhone with [Expo Go](https://apps.apple.com/app/expo-go/id982107779) (for mobile)
+- iPhone with the EAS-built Finpa binary installed (or [Expo Go](https://apps.apple.com/app/expo-go/id982107779) for quick dev iterations)
 
 ### 1. Configure environment
 
@@ -117,6 +120,14 @@ All endpoints except auth require `Authorization: Bearer <token>`.
 
 ## Mobile App
 
+### Distribution
+
+- **Production binary**: built and distributed via **EAS Build** (iOS only)
+- **OTA updates**: JS/asset changes are pushed via `eas update --branch production` — no App Store submission needed
+- **`runtimeVersion` policy**: `appVersion` — a new native build is required only when the Expo app version bumps (e.g. new native modules or config changes)
+
+### Screens
+
 Three screens accessible via drawer navigation:
 
 - **Dashboard** — Monthly/annual view with income, expense, and balance cards. Bar chart (monthly) and line + pie charts (annual).
@@ -124,6 +135,24 @@ Three screens accessible via drawer navigation:
 - **History** — Transaction list grouped by date with swipe-to-edit and swipe-to-delete.
 
 Features: dark/light theme toggle, skeleton loaders, pull-to-refresh, haptic feedback, toast notifications.
+
+## CI/CD
+
+| Trigger | Action |
+|---------|--------|
+| PR to `main` | Lint backend (ruff, ty) + mobile (eslint, prettier) |
+| Push to `main` — `backend/**` changed | Deploy to **Google Cloud Run** |
+| Push to `main` — `mobile/**` changed | `eas update --branch production` (OTA update) |
+
+### Required GitHub Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `GCP_SA_KEY` | GCP service account JSON (Cloud Run Admin + Storage Admin) |
+| `DATABASE_URL` | NeonDB connection string (`postgresql+asyncpg://...`) |
+| `SECRET_KEY` | JWT signing key |
+| `ADMIN_SECRET` | User registration guard |
+| `EXPO_TOKEN` | EAS CLI token |
 
 ## Environment Variables
 

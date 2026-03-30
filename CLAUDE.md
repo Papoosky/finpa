@@ -6,38 +6,69 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Finpa** is a personal finance tracker with multi-user support. It has two components:
 - `backend/` — FastAPI app with PostgreSQL (primary) and optional Google Sheets sync
-- `mobile/` — Expo (React Native) app with a transaction form, runs on iPhone via Expo Go
+- `mobile/` — Expo (React Native) app with a transaction form, distributed via EAS Build (iOS)
 
-Both are containerized and run together via Docker Compose for local development. Production deployment uses Google Cloud Run (backend) and EAS Update (mobile).
+**Environments:**
+- **Local dev**: Docker Compose with a local PostgreSQL container
+- **Production**: Backend on Google Cloud Run + NeonDB (serverless PostgreSQL); mobile distributed via EAS Build with OTA updates via EAS Update
 
 ## Running the project
 
-### Full stack (Docker)
-```bash
-# Requires a .env file at the repo root:
-echo "SERVER_IP=<your-lan-ip>" > .env
-echo "SECRET_KEY=$(openssl rand -hex 32)" >> .env
+### Option A — Full stack with Docker (local dev)
 
-docker compose up --build
+Uses a local PostgreSQL container. Suitable for full offline development.
+
+```bash
+# .env at repo root (minimum required):
+SERVER_IP=<your-lan-ip>
+SECRET_KEY=$(openssl rand -hex 32)
+POSTGRES_PASSWORD=<choose-a-password>
+ADMIN_SECRET=$(openssl rand -hex 24)
+
+docker compose up --build        # dev mode (hot reload, override applied automatically)
+docker compose -f docker-compose.yml up --build  # production mode (no hot reload)
 ```
 
 - Backend: `http://SERVER_IP:8000`
 - Mobile (Expo dev server): scan the QR from `docker logs finpa-mobile` with Expo Go
 
-### Backend only (local dev)
+### Option B — Backend only against NeonDB (production-like)
+
+Point `DATABASE_URL` at your Neon connection string to run locally against the same DB as production.
+
 ```bash
 cd backend
-# Start a local postgres (or use Docker: docker compose up db)
 uv sync
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+DATABASE_URL=postgresql+asyncpg://<neon-connection-string> uv run alembic upgrade head
+DATABASE_URL=postgresql+asyncpg://<neon-connection-string> \
+  SECRET_KEY=<your-key> \
+  uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Mobile only (local dev)
+### Mobile — local dev (Expo dev server)
+
 ```bash
 cd mobile
 npm install --legacy-peer-deps
 EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
+```
+
+Scan the QR with the **Expo Go** app or with a device that has the EAS-built binary installed.
+
+### Mobile — production build (EAS Build)
+
+The production iOS binary is built and distributed via EAS Build. OTA JS updates are pushed via EAS Update (no App Store submission needed for JS-only changes).
+
+```bash
+cd mobile
+# First-time setup — logs in and links the project
+npx eas-cli login
+
+# Build a new binary (e.g. after native config changes)
+npx eas build --platform ios --profile production
+
+# Push an OTA JS update (CI does this automatically on push to main)
+npx eas update --branch production --message "describe the change"
 ```
 
 ## Architecture
@@ -60,12 +91,17 @@ EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
 - `screens/TransactionScreen.tsx` — form with type toggle, amount, date, category, description
 - `config.ts` — reads `EXPO_PUBLIC_API_URL` env var (baked in at Metro bundle time)
 - `constants/categories.ts` — expense and income categories with emoji mappings
+- `app.json` — EAS project config (`projectId`, `runtimeVersion`, OTA update URL)
 - Expo SDK 54, `--legacy-peer-deps` required for npm install
-- EAS configured for OTA updates (`eas update --branch production`)
+- **Distribution**: EAS Build for the iOS binary; EAS Update (`eas update --branch production`) for OTA JS updates
+- `runtimeVersion` policy: `appVersion` — a new native build is required when the app version bumps
 
 ### Docker Compose
-- `db` service: PostgreSQL 16 with persistent volume (`pgdata`)
+- `docker-compose.yml` — base config (production-safe): `db` (Postgres 16), `backend`, `mobile`
+- `docker-compose.override.yml` — dev overrides applied automatically: volume mounts for hot reload, uvicorn `--reload`, `ENV=development`
+- `db` service: PostgreSQL 16 with persistent volume (`pgdata`) — **used in local dev only**; production uses NeonDB
 - `backend` depends on `db` with healthcheck (`pg_isready`), runs alembic migrations on startup
+- `DATABASE_URL` defaults to the local `db` container; override with a Neon connection string for production-like local runs
 - `SERVER_IP` in `.env` is injected into the mobile container for QR code and API URL
 - `SECRET_KEY` in `.env` is used for JWT signing
 - `GOOGLE_SHEETS_ID` is optional — if unset, sheet sync is disabled
@@ -138,6 +174,7 @@ EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
 
 ## Key constraints
 - PostgreSQL is the primary persistence layer, Google Sheets is an optional sync target
-- iOS only (no Android testing)
-- `newArchEnabled: false` in `app.json` — required to avoid TurboModule errors in Expo Go
+- iOS only (no Android testing or builds)
+- `newArchEnabled: false` in `app.json` — required to avoid TurboModule errors in Expo SDK 54
 - `bcrypt` must be pinned to `<5.0.0` due to passlib 1.7.4 incompatibility
+- EAS Update OTA only works for JS/asset changes; native changes (new packages with native modules, config changes) require a new `eas build`

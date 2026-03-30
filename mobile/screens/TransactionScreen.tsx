@@ -114,6 +114,7 @@ export default function TransactionScreen() {
     setLoading(false);
     if (success) {
       if (isEditing) {
+        navigation.setParams({ transaction: undefined } as never);
         navigation.goBack();
       } else {
         setRawAmount('');
