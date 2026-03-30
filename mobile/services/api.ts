@@ -37,7 +37,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     });
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err instanceof DOMException && err.name === 'AbortError') {
+    if (err instanceof Error && err.name === 'AbortError') {
       console.warn(`[API] Timeout (${REQUEST_TIMEOUT_MS}ms): ${options.method ?? 'GET'} ${url}`);
       throw new ApiError('La solicitud tardó demasiado. Intenta de nuevo.', 0);
     }
