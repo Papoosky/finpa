@@ -34,7 +34,7 @@ async function authFetch(url: string, options: RequestInit): Promise<Response> {
   try {
     return await fetch(url, { ...options, signal: controller.signal });
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
+    if (err instanceof Error && err.name === 'AbortError') {
       console.warn(`[Auth] Timeout: ${url}`);
       throw new Error('La solicitud tardó demasiado. Intenta de nuevo.', { cause: err });
     }
