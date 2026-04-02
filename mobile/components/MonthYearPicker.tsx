@@ -23,7 +23,7 @@ type Props = {
   mode: 'month' | 'year';
   selectedMonth: number;
   selectedYear: number;
-  onChangeMonth: (month: number) => void;
+  onChangeMonth: (month: number, year: number) => void;
   onChangeYear: (year: number) => void;
 };
 
@@ -67,15 +67,14 @@ export default function MonthYearPicker({
   }
 
   function handleSelectMonth(month: number) {
-    onChangeMonth(month);
-    onChangeYear(modalYear);
+    onChangeMonth(month, modalYear);
     setVisible(false);
   }
 
   function handleSelectYear(year: number) {
     onChangeYear(year);
     if (mode === 'month' && year === currentYear && selectedMonth > currentMonth) {
-      onChangeMonth(currentMonth);
+      onChangeMonth(currentMonth, year);
     }
     setVisible(false);
   }

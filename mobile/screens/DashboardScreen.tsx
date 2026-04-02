@@ -105,7 +105,10 @@ export default function DashboardScreen() {
           mode={viewMode === 'month' ? 'month' : 'year'}
           selectedMonth={selectedMonth}
           selectedYear={selectedYear}
-          onChangeMonth={setSelectedMonth}
+          onChangeMonth={(m, y) => {
+            setSelectedMonth(m);
+            setSelectedYear(y);
+          }}
           onChangeYear={setSelectedYear}
         />
       </View>
