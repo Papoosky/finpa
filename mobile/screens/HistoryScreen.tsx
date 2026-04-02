@@ -93,7 +93,7 @@ export default function HistoryScreen() {
             mode="month"
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
-            onChangeMonth={(m) => setMonth(new Date(selectedYear, m, 1))}
+            onChangeMonth={(m, y) => setMonth(new Date(y, m, 1))}
             onChangeYear={(y) => setMonth(new Date(y, selectedMonth, 1))}
           />
         </View>
@@ -113,7 +113,7 @@ export default function HistoryScreen() {
           mode="month"
           selectedMonth={selectedMonth}
           selectedYear={selectedYear}
-          onChangeMonth={(m) => setMonth(new Date(selectedYear, m, 1))}
+          onChangeMonth={(m, y) => setMonth(new Date(y, m, 1))}
           onChangeYear={(y) => setMonth(new Date(y, selectedMonth, 1))}
         />
       </View>
