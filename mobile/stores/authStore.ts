@@ -85,13 +85,30 @@ export const useAuthStore = create<AuthState>()((set) => ({
           set({ token: data.access_token, isInitialized: true });
           return;
         }
+
+        // Server explicitly rejected the refresh token — clear everything
+        if (response.status === 401 || response.status === 403) {
+          await SecureStore.deleteItemAsync(TOKEN_KEY);
+          await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+          set({ token: null, isInitialized: true });
+          return;
+        }
+
+        // Server error (5xx) or unexpected response — keep tokens, let the
+        // next API call trigger a retry via the 401 handler in api.ts
+        console.warn('[Auth] Refresh returned unexpected status on init', response.status);
       } catch (err) {
-        console.warn('[Auth] Failed to refresh token on init', err);
+        // Network error (device waking up, no signal) — keep tokens and let
+        // the user stay logged in; the 401 retry in api.ts will handle it
+        console.warn('[Auth] Failed to refresh token on init (network error)', err);
       }
 
-      // Refresh failed — clean up
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
-      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      // Proceed with the stored (possibly expired) access token so the user
+      // stays logged in; the first API call will refresh it if needed
+      if (stored) {
+        set({ token: stored, isInitialized: true });
+        return;
+      }
     }
 
     set({ token: null, isInitialized: true });

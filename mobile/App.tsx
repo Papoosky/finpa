@@ -68,6 +68,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 function AppNavigator() {
   const { colors, isDark } = useTheme();
   const token = useAuthStore((s) => s.token);
+  const refreshAccessToken = useAuthStore((s) => s.refreshAccessToken);
   const appState = useRef<AppStateStatus>(AppState.currentState);
 
   // Process due subscriptions when app comes to foreground
@@ -78,12 +79,15 @@ function AppNavigator() {
 
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        // Proactively refresh the access token so the user never hits a visible
+        // 401 after returning from background with an expired token
+        refreshAccessToken().catch(() => {});
         api.subscriptions.processDue().catch(() => {});
       }
       appState.current = nextState;
     });
     return () => subscription.remove();
-  }, [token]);
+  }, [token, refreshAccessToken]);
 
   return (
     <>
