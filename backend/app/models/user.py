@@ -24,6 +24,9 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(255))
     sync_to_sheets: Mapped[bool] = mapped_column(Boolean, default=False)
+    telegram_id: Mapped[str | None] = mapped_column(
+        String(50), unique=True, index=True, nullable=True
+    )
 
     transactions: Mapped[list[Transaction]] = relationship(back_populates="user")
     subscriptions: Mapped[list[Subscription]] = relationship(

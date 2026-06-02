@@ -35,11 +35,13 @@ jobs:
             --set-env-vars "SECRET_KEY=$SECRET_KEY" \
             --set-env-vars "ADMIN_SECRET=$ADMIN_SECRET" \
             --set-env-vars "ENV=production" \
-            --set-env-vars "REGISTRATION_ENABLED=false"
+            --set-env-vars "REGISTRATION_ENABLED=false" \
+            --set-env-vars "HERMES_SERVICE_TOKEN=$HERMES_SERVICE_TOKEN"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          HERMES_SERVICE_TOKEN: ${{ secrets.HERMES_SERVICE_TOKEN }}
 
   deploy-mobile:
     name: Deploy Mobile (EAS Update)
