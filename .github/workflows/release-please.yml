@@ -1,0 +1,25 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # Fine-grained PAT — NOT GITHUB_TOKEN. The default GITHUB_TOKEN
+          # cannot trigger downstream workflows, so a tag push made with it
+          # would silently skip cd.yml. Using a PAT makes the tag push look
+          # like it came from a real user, so cd.yml fires correctly.
+          # See CLAUDE.md → CI/CD → release-please for PAT setup + rotation.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
