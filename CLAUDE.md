@@ -67,7 +67,7 @@ npx eas-cli login
 # Build a new binary (e.g. after native config changes)
 npx eas build --platform ios --profile production
 
-# Push an OTA JS update (CI does this automatically on push to main)
+# Push an OTA JS update (CI does this automatically on release tag push, e.g. `finpa-v1.2.3`)
 npx eas update --branch production --message "describe the change"
 ```
 
@@ -153,10 +153,32 @@ npx eas update --branch production --message "describe the change"
 - **Mobile lint job**: eslint, prettier
 
 ### CD (`.github/workflows/cd.yml`)
-- Runs on push to `main` (i.e., after merging a PR)
-- Uses `dorny/paths-filter` to detect which directories changed
-- **Backend deploy** (if `backend/**` changed): deploys to Google Cloud Run via `gcloud run deploy`. Alembic migrations run automatically on container startup (Dockerfile CMD)
-- **Mobile deploy** (if `mobile/**` changed): runs `eas update --branch production` to push an OTA update
+- Triggered by **tag push** matching `finpa-v*.*.*` (created by release-please) and by manual `workflow_dispatch`. **Not** triggered by pushes to `main`.
+- No paths-filter: every release tag deploys BOTH backend and mobile unconditionally. Accepted tradeoff: ~2-3 min of idempotent rebuild on the unaffected side per release; zero "no-op CD" failure modes; no more `chore: trigger redeploy` commits.
+- **Backend deploy**: `gcloud run deploy fastapi-api` to Google Cloud Run. Alembic migrations run automatically on container startup (Dockerfile CMD).
+- **Mobile deploy**: `eas update --branch production` to push an OTA update.
+- `concurrency: { group: cd, cancel-in-progress: false }` — back-to-back tags queue serially; in-flight deploys are never killed mid-rollout.
+
+### release-please (`.github/workflows/release-please.yml`)
+- Triggered on every push to `main`.
+- Opens (or updates) a single open Release PR titled `chore(release): finpa X.Y.Z` whose body is the auto-generated CHANGELOG diff.
+- Merging the Release PR creates tag `finpa-vX.Y.Z` and a GitHub Release; the tag push fires `cd.yml`.
+
+#### PAT footgun (READ THIS)
+- release-please MUST authenticate with a **fine-grained PAT** stored as `RELEASE_PLEASE_TOKEN`, **not** the default `GITHUB_TOKEN`.
+- Why: GitHub's security model blocks events created by `GITHUB_TOKEN` from triggering downstream workflows. If release-please uses `GITHUB_TOKEN`, the tag it pushes will **silently skip** `cd.yml` — no error, no deploy.
+- Symptom of misconfiguration: Release PR merges, tag appears, GitHub Release appears, but CD never runs. If you see this, check `release-please.yml` token line first.
+
+#### Manual PAT setup (one-time)
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.
+2. Repository access: only this repo (`finpa`).
+3. Permissions: `Contents: Read and write`, `Pull requests: Read and write`. Nothing else.
+4. Expiration: 1 year (max for fine-grained PATs). Add a calendar reminder ~2 weeks before expiry.
+5. Copy the token; in the repo → Settings → Secrets and variables → Actions → New repository secret → name `RELEASE_PLEASE_TOKEN`, paste value.
+
+#### PAT rotation
+- Fine-grained PATs expire (max 1 year). When `RELEASE_PLEASE_TOKEN` expires, `release-please.yml` fails with a `401` on the action step. Recovery: regenerate per the steps above; update the secret. No code change needed.
+- No automation is in place for rotation. Calendar reminder is the safety net.
 
 ### Required GitHub Secrets
 | Secret | Description |
@@ -166,6 +188,7 @@ npx eas update --branch production --message "describe the change"
 | `SECRET_KEY` | Fixed JWT signing key (generate once with `openssl rand -hex 32`) |
 | `ADMIN_SECRET` | Fixed admin secret (generate once with `openssl rand -hex 24`) |
 | `EXPO_TOKEN` | Expo access token for EAS CLI (generate with `npx eas-cli login` then `expo token:create`) |
+| `RELEASE_PLEASE_TOKEN` | Fine-grained PAT (Contents: write, Pull requests: write). Required so release-please tag pushes can trigger `cd.yml`. See "release-please → PAT footgun" above. |
 
 ## Key conventions
 - All DB models use `id` (integer PK, internal) and `uuid` (exposed to API/clients). Joins and FKs use `id`; API responses and URL params use `uuid`
