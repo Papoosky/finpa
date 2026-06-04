@@ -119,6 +119,8 @@ npx eas update --branch production --message "describe the change"
 - Login: `POST /auth/login` with `{email, password}` → returns `{access_token, token_type}`
 - All `/transactions/` endpoints require `Authorization: Bearer <token>` header
 - Transactions are scoped to the authenticated user (full isolation)
+- **Dual-mode `get_current_user`**: accepts either a user JWT or the static `HERMES_SERVICE_TOKEN`. When the service token is presented, the `X-Act-As-User: <user_uuid>` header is required to identify the acting user. JWT callers never need this header.
+- `GET /categories` and `GET /users/by-telegram/{telegram_id}` are service-token-only endpoints (use `require_service_token` dependency).
 
 ## Linting & formatting
 
@@ -189,6 +191,7 @@ npx eas update --branch production --message "describe the change"
 | `ADMIN_SECRET` | Fixed admin secret (generate once with `openssl rand -hex 24`) |
 | `EXPO_TOKEN` | Expo access token for EAS CLI (generate with `npx eas-cli login` then `expo token:create`) |
 | `RELEASE_PLEASE_TOKEN` | Fine-grained PAT (Contents: write, Pull requests: write). Required so release-please tag pushes can trigger `cd.yml`. See "release-please → PAT footgun" above. |
+| `HERMES_SERVICE_TOKEN` | Static bearer token for Hermes agent service-to-service calls. Generate with `openssl rand -hex 32`. Min 32 chars. |
 
 ## Key conventions
 - All DB models use `id` (integer PK, internal) and `uuid` (exposed to API/clients). Joins and FKs use `id`; API responses and URL params use `uuid`

@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -9,8 +10,10 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.database import Base, engine
-from app.routers import auth, subscriptions, transactions
+from app.routers import auth, categories, subscriptions, transactions, users
 from app.services.sheet_service import init_sheet_service
+
+logger = logging.getLogger("finpa.app")
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -25,6 +28,16 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(
             "SECRET_KEY is missing, insecure, or too short (min 32 chars). "
             "Generate one with: openssl rand -hex 32"
+        )
+    hermes_token = os.environ.get("HERMES_SERVICE_TOKEN", "")
+    if hermes_token and len(hermes_token) < 32:
+        raise RuntimeError(
+            "HERMES_SERVICE_TOKEN is set but too short (min 32 chars). "
+            "Generate one with: openssl rand -hex 32"
+        )
+    if not hermes_token:
+        logger.warning(
+            "HERMES_SERVICE_TOKEN is not set — Hermes endpoints will return 401"
         )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -64,6 +77,8 @@ app.include_router(auth.router)
 app.include_router(auth.admin_router)
 app.include_router(transactions.router)
 app.include_router(subscriptions.router)
+app.include_router(categories.router)
+app.include_router(users.router)
 
 
 @app.get("/")
