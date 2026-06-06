@@ -111,12 +111,14 @@ async def refresh(
     request: Request, body: RefreshRequest, db: AsyncSession = Depends(get_db)
 ):
     refresh_record = await verify_refresh_token(body.refresh_token, db)
+    user_id = refresh_record.user_id  # capture before commit expires the record
 
     # Rotate: revoke old, issue new
     refresh_record.revoked = True
     await db.commit()
 
-    user = refresh_record.user
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one()
     new_refresh = await create_refresh_token(user.id, db)
     return TokenResponse(
         access_token=create_access_token(user.uuid),
