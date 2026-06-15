@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finpa-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8080"
+    environment:
+      - ENV=production
+      - DATABASE_URL=${DATABASE_URL:?DATABASE_URL is required}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      - REGISTRATION_ENABLED=${REGISTRATION_ENABLED:-false}
+      - ADMIN_SECRET=${ADMIN_SECRET:-}
+      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID:-}
+      - GOOGLE_CREDENTIALS_PATH=${GOOGLE_CREDENTIALS_PATH:-/app/credentials.json}
+      - HERMES_SERVICE_TOKEN=${HERMES_SERVICE_TOKEN:-}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
