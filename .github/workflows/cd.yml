@@ -13,35 +13,28 @@ concurrency:
 jobs:
   deploy-backend:
     name: Deploy Backend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, finpa, prod]
     steps:
       - uses: actions/checkout@v4
 
-      - id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - uses: google-github-actions/setup-gcloud@v2
-
-      - name: Deploy to Cloud Run
-        working-directory: backend
+      - name: Sync files to /opt/finpa
         run: |
-          gcloud run deploy fastapi-api \
-            --source . \
-            --region us-central1 \
-            --allow-unauthenticated \
-            --set-env-vars "DATABASE_URL=$DATABASE_URL" \
-            --set-env-vars "SECRET_KEY=$SECRET_KEY" \
-            --set-env-vars "ADMIN_SECRET=$ADMIN_SECRET" \
-            --set-env-vars "ENV=production" \
-            --set-env-vars "REGISTRATION_ENABLED=false" \
-            --set-env-vars "HERMES_SERVICE_TOKEN=$HERMES_SERVICE_TOKEN"
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
-          HERMES_SERVICE_TOKEN: ${{ secrets.HERMES_SERVICE_TOKEN }}
+          rsync -az --delete \
+            --exclude ".git" \
+            --exclude ".env" \
+            --exclude "node_modules" \
+            --exclude "mobile/node_modules" \
+            --exclude "backend/.venv" \
+            --exclude "__pycache__" \
+            ./ /opt/finpa/
+
+      - name: Deploy production compose
+        working-directory: /opt/finpa
+        run: |
+          test -f .env
+          docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+          docker compose -f docker-compose.prod.yml ps
+          docker image prune -f
 
   deploy-mobile:
     name: Deploy Mobile (EAS Update)
