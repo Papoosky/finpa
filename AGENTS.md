@@ -10,7 +10,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 **Environments:**
 - **Local dev**: Docker Compose with a local PostgreSQL container
-- **Production**: Backend on Google Cloud Run + NeonDB (serverless PostgreSQL); mobile distributed via EAS Build with OTA updates via EAS Update
+- **Production**: Backend on an Oracle VM using Docker Compose from `/opt/finpa`, with NeonDB (serverless PostgreSQL); mobile distributed via EAS Build with OTA updates via EAS Update
 
 ## Running the project
 
@@ -99,6 +99,8 @@ npx eas update --branch production --message "describe the change"
 ### Docker Compose
 - `docker-compose.yml` — base config (production-safe): `db` (Postgres 16), `backend`, `mobile`
 - `docker-compose.override.yml` — dev overrides applied automatically: volume mounts for hot reload, uvicorn `--reload`, `ENV=development`
+- `docker-compose.prod.yml` — Oracle production stack: private `backend` plus the Finpa-owned `finpa-cloudflared` ingress sidecar; no backend ports are published on the host and there is no dependency on Stayloyal
+- The Cloudflare Tunnel routes `finpa-api.pzuni.com` to `http://backend:8080` on the private Compose network
 - `db` service: PostgreSQL 16 with persistent volume (`pgdata`) — **used in local dev only**; production uses NeonDB
 - `backend` depends on `db` with healthcheck (`pg_isready`), runs alembic migrations on startup
 - `DATABASE_URL` defaults to the local `db` container; override with a Neon connection string for production-like local runs
@@ -157,7 +159,7 @@ npx eas update --branch production --message "describe the change"
 ### CD (`.github/workflows/cd.yml`)
 - Triggered by **tag push** matching `finpa-v*.*.*` (created by release-please) and by manual `workflow_dispatch`. **Not** triggered by pushes to `main`.
 - No paths-filter: every release tag deploys BOTH backend and mobile unconditionally. Accepted tradeoff: ~2-3 min of idempotent rebuild on the unaffected side per release; zero "no-op CD" failure modes; no more `chore: trigger redeploy` commits.
-- **Backend deploy**: `gcloud run deploy fastapi-api` to Google Cloud Run. Alembic migrations run automatically on container startup (Dockerfile CMD).
+- **Backend deploy**: runs on the Oracle self-hosted runner labeled `[self-hosted, oracle, finpa]`, syncs the repository to `/opt/finpa` while preserving its runtime `.env`, and starts `docker-compose.prod.yml`. Alembic migrations run automatically on container startup (Dockerfile CMD).
 - **Mobile deploy**: `eas update --branch production` to push an OTA update.
 - `concurrency: { group: cd, cancel-in-progress: false }` — back-to-back tags queue serially; in-flight deploys are never killed mid-rollout.
 
@@ -185,13 +187,13 @@ npx eas update --branch production --message "describe the change"
 ### Required GitHub Secrets
 | Secret | Description |
 |---|---|
-| `GCP_SA_KEY` | Google Cloud service account JSON key (needs Cloud Run Admin + Storage Admin roles) |
-| `DATABASE_URL` | Neon PostgreSQL connection string (`postgresql+asyncpg://...`) |
-| `SECRET_KEY` | Fixed JWT signing key (generate once with `openssl rand -hex 32`) |
-| `ADMIN_SECRET` | Fixed admin secret (generate once with `openssl rand -hex 24`) |
 | `EXPO_TOKEN` | Expo access token for EAS CLI (generate with `npx eas-cli login` then `expo token:create`) |
 | `RELEASE_PLEASE_TOKEN` | Fine-grained PAT (Contents: write, Pull requests: write). Required so release-please tag pushes can trigger `cd.yml`. See "release-please → PAT footgun" above. |
-| `HERMES_SERVICE_TOKEN` | Static bearer token for Hermes agent service-to-service calls. Generate with `openssl rand -hex 32`. Min 32 chars. |
+
+### Oracle runtime environment
+- Backend configuration and secrets live in `/opt/finpa/.env` on the Oracle VM; CD deliberately preserves this file instead of sourcing these values from GitHub Secrets.
+- Required values include `DATABASE_URL`, `SECRET_KEY`, and `CLOUDFLARE_TUNNEL_TOKEN`. The tunnel token is injected into the `finpa-cloudflared` container as `TUNNEL_TOKEN` and must never be committed or placed in command arguments.
+- `ADMIN_SECRET` and `HERMES_SERVICE_TOKEN` also belong in the Oracle runtime `.env` when those integrations are enabled.
 
 ## Key conventions
 - All DB models use `id` (integer PK, internal) and `uuid` (exposed to API/clients). Joins and FKs use `id`; API responses and URL params use `uuid`

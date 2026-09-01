@@ -13,7 +13,7 @@ concurrency:
 jobs:
   deploy-backend:
     name: Deploy Backend
-    runs-on: [self-hosted, linux, finpa, prod]
+    runs-on: [self-hosted, oracle, finpa]
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +33,44 @@ jobs:
         run: |
           test -f .env
           docker compose --env-file .env -f docker-compose.prod.yml up -d --build
-          docker compose -f docker-compose.prod.yml ps
+
+          for attempt in $(seq 1 24); do
+            status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' finpa-backend 2>/dev/null || true)
+            if [ "$status" = "healthy" ]; then
+              echo "Finpa backend is healthy"
+              break
+            fi
+            if [ "$status" = "unhealthy" ]; then
+              echo "Finpa backend became unhealthy"
+              docker compose --env-file .env -f docker-compose.prod.yml ps
+              docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 backend
+              exit 1
+            fi
+            if [ "$attempt" -eq 24 ]; then
+              echo "Timed out waiting for Finpa backend health (last status: $status)"
+              docker compose --env-file .env -f docker-compose.prod.yml ps
+              docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 backend
+              exit 1
+            fi
+            sleep 5
+          done
+
+          for attempt in $(seq 1 12); do
+            tunnel_status=$(docker inspect --format='{{.State.Status}}' finpa-cloudflared 2>/dev/null || true)
+            if [ "$tunnel_status" = "running" ]; then
+              echo "Finpa Cloudflare Tunnel is running"
+              break
+            fi
+            if [ "$attempt" -eq 12 ]; then
+              echo "Finpa Cloudflare Tunnel failed to start (last status: $tunnel_status)"
+              docker compose --env-file .env -f docker-compose.prod.yml ps
+              docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 cloudflared
+              exit 1
+            fi
+            sleep 5
+          done
+
+          docker compose --env-file .env -f docker-compose.prod.yml ps
           docker image prune -f
 
   deploy-mobile:
