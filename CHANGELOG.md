@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/Papoosky/finpa/compare/finpa-v1.1.0...finpa-v1.2.0) (2026-10-27)
+
+
+### Features
+
+* change runner from cd file ([4e1e508](https://github.com/Papoosky/finpa/commit/4e1e508d62a806674adc4ae6f502bd14e8299df5))
+* **web:** add responsive web app and Cloudflare deployment ([#15](https://github.com/Papoosky/finpa/issues/15)) ([4b91eef](https://github.com/Papoosky/finpa/commit/4b91eefd4a3379e4280d3505b98cd7742498ad75))
+
+
+### Bug Fixes
+
+* **auth:** avoid lazy-load of refresh_record.user after async commit ([88d05c4](https://github.com/Papoosky/finpa/commit/88d05c4f66b3aa04ec0069c0135dc0eb7db3e2e1))
+* capture user_id before the commit, then query User explicitly. ([88d05c4](https://github.com/Papoosky/finpa/commit/88d05c4f66b3aa04ec0069c0135dc0eb7db3e2e1))
+
 ## [1.1.0](https://github.com/Papoosky/finpa/compare/finpa-v1.0.0...finpa-v1.1.0) (2026-06-04)
 
 
