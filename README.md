@@ -2,15 +2,15 @@
 
 Personal finance tracker with multi-user support. Track income and expenses, visualize spending patterns, and optionally sync to Google Sheets.
 
-**Production**: Backend on Google Cloud Run + NeonDB; mobile iOS app distributed via EAS Build with OTA updates via EAS Update.
+**Production**: Backend on an Oracle VM behind Cloudflare Tunnel with NeonDB. A new web client is being introduced at `finpa.pzuni.com`; the Expo iOS client remains available during the migration.
 
 ## Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌──────────────┐
-│   Mobile App    │────▶│   Backend API   │────▶│  PostgreSQL  │
-│  Expo / React   │     │    FastAPI      │     │              │
-│    Native       │     │                 │──┬─▶│  (primary)   │
+│ Web / Mobile    │────▶│   Backend API   │────▶│  PostgreSQL  │
+│ React + Expo    │     │    FastAPI      │     │              │
+│                 │     │                 │──┬─▶│  (primary)   │
 └─────────────────┘     └─────────────────┘  │  └──────────────┘
                                              │
                                              └─▶ Google Sheets
@@ -20,15 +20,17 @@ Personal finance tracker with multi-user support. Track income and expenses, vis
 | Component | Stack |
 |-----------|-------|
 | **Backend** | FastAPI, SQLAlchemy (async), PostgreSQL 16, Alembic, JWT auth |
+| **Web** | React, TypeScript, Vite, TanStack Router + Query, Tailwind CSS |
 | **Mobile** | Expo SDK 54, React Native, React Navigation (Drawer), Zustand, Victory Native |
 | **Infra (dev)** | Docker Compose, uv (Python), npm |
-| **Infra (prod)** | Google Cloud Run (backend), NeonDB (PostgreSQL), EAS Build + EAS Update (mobile) |
+| **Infra (prod)** | Oracle VM + Cloudflare Tunnel (API), NeonDB, Cloudflare Workers (web), EAS (legacy mobile) |
 
 ## Quick Start (Local Dev)
 
 ### Prerequisites
 
 - Docker & Docker Compose
+- pnpm 10.33.2 for the web client (`corepack enable`)
 - iPhone with the EAS-built Finpa binary installed (or [Expo Go](https://apps.apple.com/app/expo-go/id982107779) for quick dev iterations)
 
 ### 1. Configure environment
@@ -97,6 +99,28 @@ EXPO_PUBLIC_API_URL=http://<your-ip>:8000 npx expo start --port 8081 --host lan
 
 Scan the QR code with Expo Go on your iPhone.
 
+### Web
+
+```bash
+cd web
+pnpm install
+cp .env.example .env.local
+pnpm dev
+```
+
+The web client runs at `http://localhost:5173` and calls the API configured in `VITE_API_URL`. It includes the dashboard, transaction CRUD and installments, history, subscriptions, dark mode, and responsive mobile navigation.
+
+Checks:
+
+```bash
+cd web
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+Production is configured as a Cloudflare Workers static-assets SPA in `web/wrangler.jsonc`. Deployment remains disabled until `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are configured in GitHub.
+
 ## API
 
 All endpoints except auth require `Authorization: Bearer <token>`.
@@ -140,19 +164,17 @@ Features: dark/light theme toggle, skeleton loaders, pull-to-refresh, haptic fee
 
 | Trigger | Action |
 |---------|--------|
-| PR to `main` | Lint backend (ruff, ty) + mobile (eslint, prettier) |
-| Push to `main` — `backend/**` changed | Deploy to **Google Cloud Run** |
-| Push to `main` — `mobile/**` changed | `eas update --branch production` (OTA update) |
+| PR to `main` or `develop` | Check backend, mobile, and web |
+| Release tag `finpa-v*.*.*` | Deploy the backend to Oracle and the web SPA to Cloudflare Workers |
 
 ### Required GitHub Secrets
 
 | Secret | Description |
 |--------|-------------|
-| `GCP_SA_KEY` | GCP service account JSON (Cloud Run Admin + Storage Admin) |
-| `DATABASE_URL` | NeonDB connection string (`postgresql+asyncpg://...`) |
-| `SECRET_KEY` | JWT signing key |
-| `ADMIN_SECRET` | User registration guard |
-| `EXPO_TOKEN` | EAS CLI token |
+| `RELEASE_PLEASE_TOKEN` | Fine-grained PAT used to create release tags |
+| `CLOUDFLARE_API_TOKEN` | Workers deployment token (required when enabling web deploy) |
+
+The `CLOUDFLARE_ACCOUNT_ID` repository variable enables the web deployment job. Backend runtime secrets remain in `/opt/finpa/.env` on the Oracle VM.
 
 ## Environment Variables
 
@@ -166,8 +188,9 @@ Features: dark/light theme toggle, skeleton loaders, pull-to-refresh, haptic fee
 | `ENV` | No | `production` | Set `development` for Swagger UI |
 | `REGISTRATION_ENABLED` | No | `false` | Allow public registration |
 | `ADMIN_SECRET` | No | — | Secret for admin user creation endpoint |
+| `WEB_ORIGINS` | No | `https://finpa.pzuni.com` in production | Comma-separated browser origins allowed by CORS |
 | `GOOGLE_SHEETS_ID` | No | — | Spreadsheet ID for sync |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `15` | JWT access token lifetime |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `10080` | JWT access token lifetime (7 days; shorten after the web cutover) |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | No | `7` | Refresh token lifetime |
 
 ## Google Sheets Sync (Optional)
@@ -189,6 +212,10 @@ uv run ruff check . && uv run ruff format --check . && uv run ty check .
 # Mobile
 cd mobile
 npm run lint && npm run format:check
+
+# Web
+cd web
+pnpm typecheck && pnpm test && pnpm build
 
 # Auto-fix
 cd backend && uv run ruff check --fix . && uv run ruff format .
@@ -213,6 +240,11 @@ finpa/
 │   ├── alembic/                 # Database migrations
 │   ├── pyproject.toml           # Python deps (uv)
 │   └── Dockerfile
+├── web/
+│   ├── src/                     # React routes, components, API client, and auth
+│   ├── public/                  # PWA manifest and icon
+│   ├── wrangler.jsonc           # Cloudflare Workers static-assets config
+│   └── package.json
 ├── mobile/
 │   ├── App.tsx                  # Entry: ThemeProvider + auth gate + drawer
 │   ├── screens/                 # AuthScreen, Dashboard, Transaction, History

@@ -71,6 +71,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # unused imports OK in __init__
 "alembic/*" = ["E", "W", "UP"]  # alembic auto-generated code
+"tests/*" = ["S101", "PT"]  # assertions and unittest helpers are expected in tests
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

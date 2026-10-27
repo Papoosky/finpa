@@ -14,7 +14,9 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    refresh_token: str
+    # Native clients receive the refresh token in the response body. Web clients
+    # identify themselves with X-Finpa-Client: web and use the HttpOnly cookie.
+    refresh_token: str | None = None
     token_type: str = "bearer"
 
 
