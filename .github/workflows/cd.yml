@@ -73,30 +73,33 @@ jobs:
           docker compose --env-file .env -f docker-compose.prod.yml ps
           docker image prune -f
 
-  deploy-mobile:
-    name: Deploy Mobile (EAS Update)
+  deploy-web:
+    name: Deploy Web (Cloudflare Workers)
+    needs: deploy-backend
+    if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: mobile
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: mobile/package-lock.json
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: pnpm install --frozen-lockfile
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
-      - name: Publish update
-        run: eas update --branch production --non-interactive --message "$COMMIT_MSG"
+      - name: Build and deploy
+        run: pnpm deploy
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
-          COMMIT_MSG: ${{ github.event.head_commit.message || github.ref_name }}
+          VITE_API_URL: https://finpa-api.pzuni.com
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

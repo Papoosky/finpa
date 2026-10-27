@@ -21,6 +21,19 @@ _INSECURE_SECRETS = {"change-me-in-production", "secret", ""}
 _IS_PRODUCTION = os.environ.get("ENV", "production") == "production"
 
 
+def _web_origins() -> list[str]:
+    configured = os.environ.get("WEB_ORIGINS", "")
+    if configured:
+        return [
+            origin.strip().rstrip("/")
+            for origin in configured.split(",")
+            if origin.strip()
+        ]
+    if _IS_PRODUCTION:
+        return ["https://finpa.pzuni.com"]
+    return ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     secret = os.environ.get("SECRET_KEY", "")
@@ -56,7 +69,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,  # ty: ignore[invalid-argument-type]  # Starlette typing issue with add_middleware
-    allow_origins=["*"],
+    allow_origins=_web_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

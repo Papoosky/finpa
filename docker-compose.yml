@@ -39,6 +39,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - REGISTRATION_ENABLED=${REGISTRATION_ENABLED:-false}
       - ADMIN_SECRET=${ADMIN_SECRET:-}
+      - WEB_ORIGINS=${WEB_ORIGINS:-http://localhost:5173}
       - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID:-}
       - GOOGLE_CREDENTIALS_PATH=/app/credentials.json
 

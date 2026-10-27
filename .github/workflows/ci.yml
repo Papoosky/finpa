@@ -30,6 +30,12 @@ jobs:
       - name: Type check (ty)
         run: uv run ty check .
 
+      - name: Unit tests
+        env:
+          SECRET_KEY: ci-secret-key-that-is-long-enough-for-finpa
+          ENV: development
+        run: uv run python -m unittest discover -s tests
+
   mobile-lint:
     name: Mobile Lint
     runs-on: ubuntu-latest
@@ -53,3 +59,34 @@ jobs:
 
       - name: Prettier
         run: npm run format:check
+
+  web-check:
+    name: Web typecheck, test and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Production build
+        run: pnpm build
